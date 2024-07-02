@@ -15,3 +15,6 @@ indent_size = 2
 
 # C# files
 [*.cs]
+
+# CA1308: Normalize strings to uppercase
+dotnet_diagnostic.CA1308.severity = none    # Also to lower is required
