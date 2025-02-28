@@ -16,72 +16,24 @@ using Etherna.CliHelper.Services;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Etherna.CliHelper.Models.Commands
 {
     [SuppressMessage("Globalization", "CA1305:Specify IFormatProvider")]
-    public abstract class CommandBase
+    public abstract class CommandBase(
+        CommandsRegistry commandsRegistry,
+        IIoService ioService,
+        IServiceProvider serviceProvider)
     {
-        // Fields.
-        private readonly Assembly assembly;
-        private readonly IServiceProvider serviceProvider;
-        private ImmutableArray<Type>? _availableSubCommandTypes;
-        private ImmutableArray<Type>? _commandPathTypes;
-
-        // Constructor.
-        protected CommandBase(
-            Assembly assembly,
-            IIoService ioService,
-            IServiceProvider serviceProvider)
-        {
-            IoService = ioService;
-            this.assembly = assembly;
-            this.serviceProvider = serviceProvider;
-        }
-
         // Properties.
-        public ImmutableArray<Type> AvailableSubCommandTypes
-        {
-            get
-            {
-                if (_availableSubCommandTypes is null)
-                {
-                    var subCommandsNamespace = GetType().Namespace + "." + GetType().Name.Replace("Command", "", StringComparison.InvariantCulture);
-                    _availableSubCommandTypes = assembly.GetTypes()
-                        .Where(t => t is {IsClass:true, IsAbstract: false} &&
-                                    t.Namespace == subCommandsNamespace &&
-                                    typeof(CommandBase).IsAssignableFrom(t))
-                        .OrderBy(t => t.Name)
-                        .ToImmutableArray();
-                }
-                return _availableSubCommandTypes.Value;
-            }
-        }
         public string CommandPathNames => string.Join(' ',
             CommandPathTypes.Select(cType => ((CommandBase)serviceProvider.GetRequiredService(cType)).Name));
-        public ImmutableArray<Type> CommandPathTypes
-        {
-            get
-            {
-                if (_commandPathTypes is null)
-                {
-                    var currentCommandNamespace = GetType().Namespace;
-                    if (currentCommandNamespace is null)
-                        throw new InvalidOperationException();
-
-                    _commandPathTypes = GetParentCommandTypesFromNamespace(currentCommandNamespace)
-                        .Append(GetType()).ToImmutableArray();
-                }
-                return _commandPathTypes.Value;
-            }
-        }
+        public IEnumerable<Type> CommandPathTypes => commandsRegistry.GetCommandPathTypes(GetType());
         public virtual string CommandArgsHelpString => HasSubCommands ? "COMMAND" : "";
         public string CommandPathUsageHelpString
         {
@@ -108,14 +60,15 @@ namespace Etherna.CliHelper.Models.Commands
         public abstract string Description { get; }
         public virtual bool HasOptions => false;
         public virtual bool HasRequiredOptions => false;
-        public bool HasSubCommands => AvailableSubCommandTypes.Any();
+        public bool HasSubCommands => SubCommandTypes.Any();
         public virtual bool IsRootCommand => false;
         public string Name => GetCommandNameFromType(GetType());
         public virtual bool PrintHelpWithNoArgs => true;
+        public IEnumerable<Type> SubCommandTypes => commandsRegistry.GetCommandSubTypes(GetType());
         
         // Protected properties.
-        protected IIoService IoService { get; }
-        
+        protected IIoService IoService { get; } = ioService;
+
         // Public methods.
         public async Task RunAsync(string[] args)
         {
@@ -156,7 +109,7 @@ namespace Etherna.CliHelper.Models.Commands
             var subCommandName = commandArgs[0];
             var subCommandArgs = commandArgs[1..];
 
-            var selectedCommandType = AvailableSubCommandTypes.FirstOrDefault(
+            var selectedCommandType = SubCommandTypes.FirstOrDefault(
                 t => GetCommandNameFromType(t) == subCommandName);
             
             if (selectedCommandType is null)
@@ -177,7 +130,7 @@ namespace Etherna.CliHelper.Models.Commands
             return commandType.Name.Replace("Command", "", StringComparison.InvariantCulture).ToLowerInvariant();
         }
         
-        // Private helpers.
+        // Helpers.
         private bool EvaluatePrintHelp(string[] args)
         {
             ArgumentNullException.ThrowIfNull(args, nameof(args));
@@ -198,21 +151,6 @@ namespace Etherna.CliHelper.Models.Commands
             return false;
         }
 
-        private static IEnumerable<Type> GetParentCommandTypesFromNamespace(string currentNamespace)
-        {
-            var lastSeparatorIndex = currentNamespace.LastIndexOf('.');
-            var parentNamespace = currentNamespace[..lastSeparatorIndex];
-            var parentCommandName = currentNamespace[(lastSeparatorIndex + 1)..] + "Command";
-            var parentCommandType = typeof(CommandBase).GetTypeInfo().Assembly.GetTypes()
-                .FirstOrDefault(t => t is { IsClass: true, IsAbstract: false } &&
-                                     t.FullName == parentNamespace + '.' + parentCommandName &&
-                                     typeof(CommandBase).IsAssignableFrom(t));
-            
-            if (parentCommandType is null)
-                return Array.Empty<Type>();
-            return GetParentCommandTypesFromNamespace(parentNamespace).Append(parentCommandType);
-        }
-
         [SuppressMessage("Performance", "CA1851:Possible multiple enumerations of \'IEnumerable\' collection")]
         private void PrintHelp()
         {
@@ -228,7 +166,7 @@ namespace Etherna.CliHelper.Models.Commands
             strBuilder.AppendLine();
         
             // Add sub commands.
-            var availableSubCommandTypes = AvailableSubCommandTypes;
+            var availableSubCommandTypes = SubCommandTypes;
             if (availableSubCommandTypes.Any())
             {
                 var allSubCommands = availableSubCommandTypes.Select(t => (CommandBase)serviceProvider.GetRequiredService(t));
@@ -262,21 +200,17 @@ namespace Etherna.CliHelper.Models.Commands
     }
     
     [SuppressMessage("Globalization", "CA1305:Specify IFormatProvider")]
-    public abstract class CommandBase<TOptions> : CommandBase
-        where TOptions: CommandOptionsBase, new()
+    public abstract class CommandBase<TOptions>(
+        CommandsRegistry commandsRegistry,
+        IIoService ioService,
+        IServiceProvider serviceProvider)
+        : CommandBase(commandsRegistry, ioService, serviceProvider)
+        where TOptions : CommandOptionsBase, new()
     {
-        // Constructor.
-        protected CommandBase(
-            Assembly assembly,
-            IIoService ioService,
-            IServiceProvider serviceProvider)
-            : base(assembly, ioService, serviceProvider)
-        { }
-        
         // Properties.
         public override bool HasOptions => true;
         public override bool HasRequiredOptions => Options.AreRequired;
-        public TOptions Options { get; } = new TOptions();
+        public TOptions Options { get; } = new();
         
         // Methods.
         protected override int ParseOptionArgs(string[] args) => Options.ParseArgs(args, IoService);
