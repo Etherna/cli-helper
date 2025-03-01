@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU Lesser General Public License along with Cli Helper.
 // If not, see <https://www.gnu.org/licenses/>.
 
-using Etherna.CliHelper.Models.Commands.OptionRequirements;
+using Etherna.CliHelper.Commands.Models.OptionRequirements;
 using Etherna.CliHelper.Services;
 using System;
 using System.Collections.Generic;
@@ -20,7 +20,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 
-namespace Etherna.CliHelper.Models.Commands
+namespace Etherna.CliHelper.Commands.Models
 {
     public abstract class CommandOptionsBase
     {

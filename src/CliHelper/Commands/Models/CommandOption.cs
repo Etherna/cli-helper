@@ -16,7 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-namespace Etherna.CliHelper.Models.Commands
+namespace Etherna.CliHelper.Commands.Models
 {
     public class CommandOption
     {

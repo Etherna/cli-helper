@@ -13,7 +13,6 @@
 // If not, see <https://www.gnu.org/licenses/>.
 
 using Etherna.CliHelper.Services;
-using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -22,18 +21,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Etherna.CliHelper.Models.Commands
+namespace Etherna.CliHelper.Commands.Models
 {
     [SuppressMessage("Globalization", "CA1305:Specify IFormatProvider")]
     public abstract class CommandBase(
-        CommandsRegistry commandsRegistry,
-        IIoService ioService,
-        IServiceProvider serviceProvider)
+        CommandManager commandManager)
     {
         // Properties.
         public string CommandPathNames => string.Join(' ',
-            CommandPathTypes.Select(cType => ((CommandBase)serviceProvider.GetRequiredService(cType)).Name));
-        public IEnumerable<Type> CommandPathTypes => commandsRegistry.GetCommandPathTypes(GetType());
+            CommandPathTypes.Select(cType => commandManager.CreateCommand(cType).Name));
+        public IEnumerable<Type> CommandPathTypes => commandManager.GetCommandPathTypes(GetType());
         public virtual string CommandArgsHelpString => HasSubCommands ? "COMMAND" : "";
         public string CommandPathUsageHelpString
         {
@@ -42,7 +39,7 @@ namespace Etherna.CliHelper.Models.Commands
                 var strBuilder = new StringBuilder();
                 foreach (var commandType in CommandPathTypes)
                 {
-                    var command = (CommandBase)serviceProvider.GetRequiredService(commandType);
+                    var command = commandManager.CreateCommand(commandType);
                     strBuilder.Append(command.Name);
                     if (command.HasOptions)
                     {
@@ -64,10 +61,10 @@ namespace Etherna.CliHelper.Models.Commands
         public virtual bool IsRootCommand => false;
         public string Name => GetCommandNameFromType(GetType());
         public virtual bool PrintHelpWithNoArgs => true;
-        public IEnumerable<Type> SubCommandTypes => commandsRegistry.GetCommandSubTypes(GetType());
+        public IEnumerable<Type> SubCommandTypes => commandManager.GetCommandSubTypes(GetType());
         
         // Protected properties.
-        protected IIoService IoService { get; } = ioService;
+        protected IIoService IoService { get; } = commandManager.DefaultIoService;
 
         // Public methods.
         public async Task RunAsync(string[] args)
@@ -115,7 +112,7 @@ namespace Etherna.CliHelper.Models.Commands
             if (selectedCommandType is null)
                 throw new ArgumentException($"{CommandPathNames}: '{subCommandName}' is not a valid command.");
 
-            var selectedCommand = (CommandBase)serviceProvider.GetRequiredService(selectedCommandType);
+            var selectedCommand = commandManager.CreateCommand(selectedCommandType);
             await selectedCommand.RunAsync(subCommandArgs).ConfigureAwait(false);
         }
         
@@ -166,10 +163,9 @@ namespace Etherna.CliHelper.Models.Commands
             strBuilder.AppendLine();
         
             // Add sub commands.
-            var availableSubCommandTypes = SubCommandTypes;
-            if (availableSubCommandTypes.Any())
+            if (SubCommandTypes.Any())
             {
-                var allSubCommands = availableSubCommandTypes.Select(t => (CommandBase)serviceProvider.GetRequiredService(t));
+                var allSubCommands = SubCommandTypes.Select(commandManager.CreateCommand);
                 
                 strBuilder.AppendLine("Commands:");
                 var descriptionShift = allSubCommands.Select(c => c.Name.Length).Max() + 4;
@@ -201,10 +197,8 @@ namespace Etherna.CliHelper.Models.Commands
     
     [SuppressMessage("Globalization", "CA1305:Specify IFormatProvider")]
     public abstract class CommandBase<TOptions>(
-        CommandsRegistry commandsRegistry,
-        IIoService ioService,
-        IServiceProvider serviceProvider)
-        : CommandBase(commandsRegistry, ioService, serviceProvider)
+        CommandManager commandManager)
+        : CommandBase(commandManager)
         where TOptions : CommandOptionsBase, new()
     {
         // Properties.

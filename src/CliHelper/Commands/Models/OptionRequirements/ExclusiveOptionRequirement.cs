@@ -16,19 +16,20 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Etherna.CliHelper.Models.Commands.OptionRequirements
+namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
-    public class ForbiddenOptionRequirement(params string[] optionsNames)
+    public class ExclusiveOptionRequirement(params string[] optionsNames)
         : OptionRequirementBase(optionsNames)
     {
         // Methods.
         public override string PrintHelpLine(CommandOptionsBase commandOptions) =>
-            string.Join(", ", OptionsNames.Select(n => commandOptions.FindOptionByName(n).LongName)) +
-            (OptionsNames.Count == 1 ? " is forbidden." : " are forbidden.");
+            ComposeSentence(OptionsNames.Select(n => commandOptions.FindOptionByName(n).LongName));
 
-        public override IEnumerable<OptionRequirementError> ValidateOptions(CommandOptionsBase commandOptions, IEnumerable<ParsedOption> parsedOptions)
+        public override IEnumerable<OptionRequirementError> ValidateOptions(
+            CommandOptionsBase commandOptions,
+            IEnumerable<ParsedOption> parsedOptions)
         {
-            if (OptionsNames.Any(optName => TryFindParsedOption(parsedOptions, optName, out _)))
+            if (OptionsNames.Count(optName => TryFindParsedOption(parsedOptions, optName, out _)) >= 2)
             {
                 var invalidParsedNames = parsedOptions.Where(parsedOpt =>
                         OptionsNames.Contains(parsedOpt.Option.ShortName) ||
@@ -43,6 +44,6 @@ namespace Etherna.CliHelper.Models.Commands.OptionRequirements
         
         // Private helpers.
         private static string ComposeSentence(IEnumerable<string> optNames) =>
-            string.Join(", ", optNames) + (optNames.Count() == 1 ? " is forbidden." : " are forbidden.");
+            $"{string.Join(", ", optNames)} are mutual exclusive.";
     }
 }

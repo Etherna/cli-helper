@@ -12,15 +12,17 @@
 // You should have received a copy of the GNU Lesser General Public License along with Cli Helper.
 // If not, see <https://www.gnu.org/licenses/>.
 
-using Etherna.CliHelper.Models.Commands;
-using System;
-
-namespace Etherna.CliHelper.Models
+namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
-    public interface ICommandsMapper
+    public class OptionRequirementError
     {
-        public ICommandsMapper AddCommand<TCommand>(
-            Action<ICommandsMapper>? configSubCommands = null)
-            where TCommand : CommandBase;
+        // Constructor.
+        public OptionRequirementError(string message)
+        {
+            Message = message;
+        }
+
+        // Properties.
+        public string Message { get; }
     }
 }

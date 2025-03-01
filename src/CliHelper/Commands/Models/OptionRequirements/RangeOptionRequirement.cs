@@ -16,18 +16,31 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Etherna.CliHelper.Models.Commands.OptionRequirements
+namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
-    public class MaxValueOptionRequirement(
-        string optionsName,
-        double maxValue)
-        : OptionRequirementBase([optionsName])
+    public class RangeOptionRequirement : OptionRequirementBase
     {
+        // Constructor.
+        public RangeOptionRequirement(string optionsName,
+            double minValue,
+            double maxValue) : base([optionsName])
+        {
+            if (minValue >= maxValue)
+                throw new ArgumentException("Min value must be smaller than max value");
+            
+            MaxValue = maxValue;
+            MinValue = minValue;
+        }
+
+        // Properties.
+        public double MaxValue { get; }
+        public double MinValue { get; }
+
         // Methods.
         public override string PrintHelpLine(CommandOptionsBase commandOptions)
         {
             ArgumentNullException.ThrowIfNull(commandOptions, nameof(commandOptions));
-
+            
             return ComposeSentence(commandOptions.FindOptionByName(OptionsNames.First()).LongName);
         }
 
@@ -36,7 +49,7 @@ namespace Etherna.CliHelper.Models.Commands.OptionRequirements
             IEnumerable<ParsedOption> parsedOptions)
         {
             var optName = OptionsNames.First();
-
+            
             if (!TryFindParsedOption(parsedOptions, optName, out var parsedOption))
                 return Array.Empty<OptionRequirementError>();
 
@@ -44,12 +57,12 @@ namespace Etherna.CliHelper.Models.Commands.OptionRequirements
                 return [new OptionRequirementError(
                     $"Invalid argument value: {parsedOption.ParsedName} {parsedOption.ParsedArgs.First()}")];
 
-            return doubleArg <= maxValue
+            return doubleArg >= MinValue && doubleArg <= MaxValue
                 ? Array.Empty<OptionRequirementError>()
                 : [new OptionRequirementError(ComposeSentence(parsedOption.ParsedName))];
         }
 
         // Private helpers.
-        private string ComposeSentence(string optName) => $"{optName} has max value {maxValue}.";
+        private string ComposeSentence(string optName) => $"{optName} has value in range [{MinValue}, {MaxValue}].";
     }
 }

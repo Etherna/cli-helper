@@ -12,19 +12,15 @@
 // You should have received a copy of the GNU Lesser General Public License along with Cli Helper.
 // If not, see <https://www.gnu.org/licenses/>.
 
+using Etherna.CliHelper.Commands.Models;
 using System;
-using System.Collections.ObjectModel;
 
-namespace Etherna.CliHelper.Models.Commands
+namespace Etherna.CliHelper.Commands
 {
-    public class ParsedOption(
-        CommandOption option,
-        string parsedName,
-        params string[] parsedArgs)
+    public interface ICommandManagerConfiguration
     {
-        // Properties.
-        public CommandOption Option { get; } = option;
-        public ReadOnlyCollection<string> ParsedArgs { get; } = Array.AsReadOnly(parsedArgs);
-        public string ParsedName { get; } = parsedName;
+        public ICommandManagerConfiguration AddCommand<TCommand>(
+            Action<ICommandManagerConfiguration>? configSubCommands = null)
+            where TCommand : CommandBase;
     }
 }

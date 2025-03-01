@@ -12,28 +12,30 @@
 // You should have received a copy of the GNU Affero General Public License along with Etherna Gateway CLI.
 // If not, see <https://www.gnu.org/licenses/>.
 
-using Etherna.CliHelper.Models.Commands;
+using Etherna.CliHelper.Commands.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
-namespace Etherna.CliHelper.Models
+namespace Etherna.CliHelper.Commands
 {
-    internal sealed class CommandMap(
+    public sealed class CommandMap(
         Type commandType,
         CommandMap? parentCommandMap)
-        : ICommandsMapper
+        : ICommandManagerConfiguration
     {
         // Fields
         private readonly List<CommandMap> subCommandMaps = [];
 
         // Properties.
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
         public Type CommandType { get; } = commandType;
         public CommandMap? ParentCommandMap { get; } = parentCommandMap;
         public IEnumerable<CommandMap> SubCommandMaps => subCommandMaps;
 
         // Methods.
-        public ICommandsMapper AddCommand<TCommand>(
-            Action<ICommandsMapper>? configSubCommands = null)
+        public ICommandManagerConfiguration AddCommand<TCommand>(
+            Action<ICommandManagerConfiguration>? configSubCommands = null)
             where TCommand : CommandBase
         {
             var subCommandMap = new CommandMap(typeof(TCommand), this);

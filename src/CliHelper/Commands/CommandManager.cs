@@ -12,21 +12,40 @@
 // You should have received a copy of the GNU Lesser General Public License along with Cli Helper.
 // If not, see <https://www.gnu.org/licenses/>.
 
-using Etherna.CliHelper.Models.Commands;
+using Etherna.CliHelper.Commands.Models;
+using Etherna.CliHelper.Services;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Etherna.CliHelper.Models
+namespace Etherna.CliHelper.Commands
 {
-    public class CommandsRegistry : ICommandsMapper
+    public class CommandManager(
+        CommandManagerConfiguration config,
+        IIoService ioService,
+        IServiceProvider serviceProvider)
     {
-        // Fields.
-        private readonly Dictionary<Type, CommandMap> allCommandMaps = new();
-        
+        // Properties.
+        public IIoService DefaultIoService { get; } = ioService;
+
         // Methods.
+        public TCommand CreateCommand<TCommand>()
+            where TCommand : CommandBase =>
+            (TCommand)CreateCommand(typeof(TCommand));
+
+        public CommandBase CreateCommand(Type commandType)
+        {
+            ArgumentNullException.ThrowIfNull(commandType, nameof(commandType));
+            
+            if (!config.AllCommandMaps.ContainsKey(commandType))
+                throw new InvalidOperationException($"Unregistered command type {commandType.Name}");
+            
+            return (CommandBase)serviceProvider.GetRequiredService(commandType);
+        }
+        
         public IEnumerable<Type> GetCommandSubTypes(Type commandType) =>
-            allCommandMaps[commandType].SubCommandMaps.Select(m => m.CommandType);
+            config.AllCommandMaps[commandType].SubCommandMaps.Select(m => m.CommandType);
 
         public IEnumerable<Type> GetCommandPathTypes(Type commandType)
         {
@@ -43,26 +62,6 @@ namespace Etherna.CliHelper.Models
         }
 
         public Type? TryGetParentCommand(Type commandType) =>
-            allCommandMaps[commandType].ParentCommandMap?.CommandType;
-
-        public ICommandsMapper AddCommand<TCommand>(
-            Action<ICommandsMapper>? configSubCommands = null)
-            where TCommand : CommandBase
-        {
-            var commandMap = new CommandMap(typeof(TCommand), null);
-            configSubCommands?.Invoke(commandMap);
-            
-            AddRecursivelyCommandMaps(commandMap);
-
-            return this;
-        }
-
-        // Helpers.
-        private void AddRecursivelyCommandMaps(CommandMap commandMap)
-        {
-            allCommandMaps.Add(commandMap.CommandType, commandMap);
-            foreach (var subCommandMap in commandMap.SubCommandMaps)
-                AddRecursivelyCommandMaps(subCommandMap);
-        }
+            config.AllCommandMaps[commandType].ParentCommandMap?.CommandType;
     }
 }

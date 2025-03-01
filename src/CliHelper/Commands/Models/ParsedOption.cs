@@ -12,17 +12,19 @@
 // You should have received a copy of the GNU Lesser General Public License along with Cli Helper.
 // If not, see <https://www.gnu.org/licenses/>.
 
-namespace Etherna.CliHelper.Models.Commands.OptionRequirements
-{
-    public class OptionRequirementError
-    {
-        // Constructor.
-        public OptionRequirementError(string message)
-        {
-            Message = message;
-        }
+using System;
+using System.Collections.ObjectModel;
 
+namespace Etherna.CliHelper.Commands.Models
+{
+    public class ParsedOption(
+        CommandOption option,
+        string parsedName,
+        params string[] parsedArgs)
+    {
         // Properties.
-        public string Message { get; }
+        public CommandOption Option { get; } = option;
+        public ReadOnlyCollection<string> ParsedArgs { get; } = Array.AsReadOnly(parsedArgs);
+        public string ParsedName { get; } = parsedName;
     }
 }

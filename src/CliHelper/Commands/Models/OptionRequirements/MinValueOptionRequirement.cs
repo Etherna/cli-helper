@@ -16,7 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Etherna.CliHelper.Models.Commands.OptionRequirements
+namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
     public class MinValueOptionRequirement(
         string optionsName,
