@@ -24,13 +24,20 @@ using System.Threading.Tasks;
 namespace Etherna.CliHelper.Commands.Models
 {
     [SuppressMessage("Globalization", "CA1305:Specify IFormatProvider")]
-    public abstract class CommandBase(
-        CommandManager commandManager)
+    public abstract class CommandBase
     {
+        // Fields.
+        private ICommandManager _commandManager = null!;
+
         // Properties.
+        public required ICommandManager CommandManager
+        {
+            get => _commandManager;
+            set => _commandManager = value;
+        }
         public string CommandPathNames => string.Join(' ',
-            CommandPathTypes.Select(cType => commandManager.CreateCommand(cType).Name));
-        public IEnumerable<Type> CommandPathTypes => commandManager.GetCommandPathTypes(GetType());
+            CommandPathTypes.Select(cType => CommandManager.CreateCommand(cType).Name));
+        public IEnumerable<Type> CommandPathTypes => CommandManager.GetCommandPathTypes(GetType());
         public virtual string CommandArgsHelpString => HasSubCommands ? "COMMAND" : "";
         public string CommandPathUsageHelpString
         {
@@ -39,7 +46,7 @@ namespace Etherna.CliHelper.Commands.Models
                 var strBuilder = new StringBuilder();
                 foreach (var commandType in CommandPathTypes)
                 {
-                    var command = commandManager.CreateCommand(commandType);
+                    var command = CommandManager.CreateCommand(commandType);
                     strBuilder.Append(command.Name);
                     if (command.HasOptions)
                     {
@@ -61,10 +68,10 @@ namespace Etherna.CliHelper.Commands.Models
         public virtual bool IsRootCommand => false;
         public string Name => GetCommandNameFromType(GetType());
         public virtual bool PrintHelpWithNoArgs => true;
-        public IEnumerable<Type> SubCommandTypes => commandManager.GetCommandSubTypes(GetType());
+        public IEnumerable<Type> SubCommandTypes => CommandManager.GetCommandSubTypes(GetType());
         
         // Protected properties.
-        protected IIoService IoService { get; } = commandManager.DefaultIoService;
+        protected IIoService IoService => CommandManager.IoService;
 
         // Public methods.
         public async Task RunAsync(string[] args)
@@ -112,7 +119,7 @@ namespace Etherna.CliHelper.Commands.Models
             if (selectedCommandType is null)
                 throw new ArgumentException($"{CommandPathNames}: '{subCommandName}' is not a valid command.");
 
-            var selectedCommand = commandManager.CreateCommand(selectedCommandType);
+            var selectedCommand = CommandManager.CreateCommand(selectedCommandType);
             await selectedCommand.RunAsync(subCommandArgs).ConfigureAwait(false);
         }
         
@@ -165,7 +172,7 @@ namespace Etherna.CliHelper.Commands.Models
             // Add sub commands.
             if (SubCommandTypes.Any())
             {
-                var allSubCommands = SubCommandTypes.Select(commandManager.CreateCommand);
+                var allSubCommands = SubCommandTypes.Select(CommandManager.CreateCommand);
                 
                 strBuilder.AppendLine("Commands:");
                 var descriptionShift = allSubCommands.Select(c => c.Name.Length).Max() + 4;
@@ -196,9 +203,7 @@ namespace Etherna.CliHelper.Commands.Models
     }
     
     [SuppressMessage("Globalization", "CA1305:Specify IFormatProvider")]
-    public abstract class CommandBase<TOptions>(
-        CommandManager commandManager)
-        : CommandBase(commandManager)
+    public abstract class CommandBase<TOptions> : CommandBase
         where TOptions : CommandOptionsBase, new()
     {
         // Properties.

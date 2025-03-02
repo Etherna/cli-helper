@@ -44,7 +44,15 @@ namespace Etherna.CliHelper.Commands
         // Helpers.
         private void RegisterRecursivelyCommandMaps(CommandMap commandMap)
         {
-            services.AddTransient(commandMap.CommandType);
+            services.AddTransient(
+                commandMap.CommandType,
+                sp =>
+                {
+                    var command = (CommandBase)ActivatorUtilities.CreateInstance(sp, commandMap.CommandType);
+                    command.CommandManager = sp.GetRequiredService<ICommandManager>();
+                    
+                    return command;
+                });
             
             _allCommandMaps.Add(commandMap.CommandType, commandMap);
             foreach (var subCommandMap in commandMap.SubCommandMaps)

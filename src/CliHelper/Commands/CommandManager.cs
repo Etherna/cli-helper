@@ -21,13 +21,14 @@ using System.Linq;
 
 namespace Etherna.CliHelper.Commands
 {
-    public class CommandManager(
+    internal sealed class CommandManager(
         CommandManagerConfiguration config,
         IIoService ioService,
         IServiceProvider serviceProvider)
+        : ICommandManager
     {
         // Properties.
-        public IIoService DefaultIoService { get; } = ioService;
+        public IIoService IoService { get; } = ioService;
 
         // Methods.
         public TCommand CreateCommand<TCommand>()

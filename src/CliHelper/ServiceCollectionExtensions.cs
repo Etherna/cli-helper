@@ -32,7 +32,7 @@ namespace Etherna.CliHelper
             services.AddTransient<IIoService, TIoService>();
             
             // Add singleton services.
-            services.AddSingleton<CommandManager>(
+            services.AddSingleton<ICommandManager>(
                 sp =>
                 {
                     var ioService = sp.GetRequiredService<IIoService>();
