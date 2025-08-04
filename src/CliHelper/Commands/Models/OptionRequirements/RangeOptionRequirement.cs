@@ -51,7 +51,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
             var optName = OptionsNames.First();
             
             if (!TryFindParsedOption(parsedOptions, optName, out var parsedOption))
-                return Array.Empty<OptionRequirementError>();
+                return [];
 
             if (!double.TryParse(parsedOption!.ParsedArgs.First(), out var doubleArg))
                 return [new OptionRequirementError(

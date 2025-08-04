@@ -38,7 +38,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
                 return [new OptionRequirementError(ComposeSentence(invalidParsedNames))];
             }
 
-            return Array.Empty<OptionRequirementError>();
+            return [];
         }
         
         // Private helpers.

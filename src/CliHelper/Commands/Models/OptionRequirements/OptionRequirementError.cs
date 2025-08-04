@@ -14,15 +14,9 @@
 
 namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
-    public class OptionRequirementError
+    public class OptionRequirementError(string message)
     {
-        // Constructor.
-        public OptionRequirementError(string message)
-        {
-            Message = message;
-        }
-
         // Properties.
-        public string Message { get; }
+        public string Message { get; } = message;
     }
 }

@@ -27,7 +27,7 @@ namespace Etherna.CliHelper.Commands.Models
         // Properties.
         public bool AreRequired => Requirements.OfType<RequireOneOfOptionRequirement>().Any();
         public abstract IEnumerable<CommandOption> Definitions { get; }
-        public virtual IEnumerable<OptionRequirementBase> Requirements => Array.Empty<OptionRequirementBase>();
+        public virtual IEnumerable<OptionRequirementBase> Requirements => [];
         
         // Methods.
         public CommandOption FindOptionByName(string name) =>

@@ -40,7 +40,7 @@ namespace Etherna.CliHelper.Commands.Models
 
             ShortName = shortName;
             LongName = longName;
-            RequiredArgTypes = requiredArgTypes ?? Array.Empty<Type>();
+            RequiredArgTypes = requiredArgTypes ?? [];
             Description = description;
             OnFound = onFound;
         }

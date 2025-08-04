@@ -39,7 +39,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
             var optName = OptionsNames.First();
             
             if (!TryFindParsedOption(parsedOptions, optName, out var parsedOption))
-                return Array.Empty<OptionRequirementError>();
+                return [];
 
             var thenErrors = thenRequirement.ValidateOptions(commandOptions, parsedOptions);
 
