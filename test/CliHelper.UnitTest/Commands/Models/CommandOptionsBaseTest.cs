@@ -12,6 +12,7 @@
 // You should have received a copy of the GNU Lesser General Public License along with Cli Helper.
 // If not, see <https://www.gnu.org/licenses/>.
 
+using Etherna.CliHelper.Commands.Models.OptionRequirements;
 using Etherna.CliHelper.Services;
 using Moq;
 using System;
@@ -38,6 +39,21 @@ namespace Etherna.CliHelper.Commands.Models
                 new("-g", "--gamma", "Gamma flag", _ => Gamma = true),
                 new("-n", "--name", "Name", args => Name = args[0], [typeof(string)]),
                 new("-r", "--range", "Range", args => Range = args, [typeof(int), typeof(int)])
+            ];
+        }
+
+        private sealed class RequiringOptions : CommandOptionsBase
+        {
+            public override IEnumerable<CommandOption> Definitions =>
+            [
+                new("-a", "--alpha", "Alpha flag", _ => { }),
+                new("-c", "--count", "Count", _ => { }, [typeof(int)])
+            ];
+
+            public override IEnumerable<OptionRequirementBase> Requirements =>
+            [
+                new RequireOneOfOptionRequirement("-a"),
+                new MinValueOptionRequirement("--count", 1)
             ];
         }
 
@@ -81,6 +97,33 @@ namespace Etherna.CliHelper.Commands.Models
             Assert.True(options.Beta);
             Assert.False(options.Gamma);
             Assert.Equal("value", options.Name);
+        }
+
+        [Fact]
+        public void ParseArgsTakesFollowingArgsStartingWithDashAsOptionArgs()
+        {
+            var options = new TestOptions();
+
+            var parsedArgs = options.ParseArgs(["-n", "-b", "commandArg"], ioService);
+
+            Assert.Equal(2, parsedArgs);
+            Assert.Equal("-b", options.Name);
+            Assert.False(options.Beta);
+        }
+
+        [Fact]
+        public void ParseArgsReportsEveryViolatedRequirement()
+        {
+            var ioServiceMock = new Mock<IIoService>();
+            var options = new RequiringOptions();
+
+            var exception = Assert.Throws<ArgumentException>(() => options.ParseArgs(["-c", "0"], ioServiceMock.Object));
+
+            Assert.Equal("Errors with command options", exception.Message);
+            ioServiceMock.Verify(io => io.WriteError(
+                "Invalid options:" + Environment.NewLine +
+                "  --alpha is required." + Environment.NewLine +
+                "  -c has min value 1." + Environment.NewLine), Times.Once);
         }
 
         [Fact]
