@@ -14,12 +14,14 @@
 
 using Etherna.CliHelper.Commands.Models;
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Etherna.CliHelper.Commands
 {
     public interface ICommandManagerConfiguration
     {
-        public ICommandManagerConfiguration AddCommand<TCommand>(
+        public ICommandManagerConfiguration AddCommand<
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TCommand>(
             Action<ICommandManagerConfiguration>? configSubCommands = null)
             where TCommand : CommandBase;
     }

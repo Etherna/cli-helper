@@ -16,6 +16,7 @@ using Etherna.CliHelper.Commands.Models;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Etherna.CliHelper.Commands
 {
@@ -29,7 +30,8 @@ namespace Etherna.CliHelper.Commands
         public IReadOnlyDictionary<Type, CommandMap> AllCommandMaps => _allCommandMaps;
         
         // Methods.
-        public ICommandManagerConfiguration AddCommand<TCommand>(
+        public ICommandManagerConfiguration AddCommand<
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TCommand>(
             Action<ICommandManagerConfiguration>? configSubCommands = null)
             where TCommand : CommandBase
         {
