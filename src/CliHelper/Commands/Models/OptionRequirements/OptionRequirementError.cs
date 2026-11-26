@@ -14,9 +14,16 @@
 
 namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
+    /// <summary>
+    /// A violation of an option requirement.
+    /// </summary>
+    /// <param name="message">The description of the violation, meant for the user</param>
     public class OptionRequirementError(string message)
     {
         // Properties.
+        /// <summary>
+        /// The description of the violation, meant for the user.
+        /// </summary>
         public string Message { get; } = message;
     }
 }

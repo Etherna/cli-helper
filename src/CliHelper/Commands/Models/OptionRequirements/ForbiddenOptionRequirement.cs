@@ -12,20 +12,25 @@
 // You should have received a copy of the GNU Lesser General Public License along with Cli Helper.
 // If not, see <https://www.gnu.org/licenses/>.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
+    /// <summary>
+    /// Forbids the options.
+    /// </summary>
+    /// <param name="optionsNames">The names of the forbidden options, short or long</param>
     public class ForbiddenOptionRequirement(params string[] optionsNames)
         : OptionRequirementBase(optionsNames)
     {
         // Methods.
+        /// <inheritdoc />
         public override string PrintHelpLine(CommandOptionsBase commandOptions) =>
             string.Join(", ", OptionsNames.Select(n => commandOptions.FindOptionByName(n).LongName)) +
             (OptionsNames.Count == 1 ? " is forbidden." : " are forbidden.");
 
+        /// <inheritdoc />
         public override IEnumerable<OptionRequirementError> ValidateOptions(CommandOptionsBase commandOptions, IEnumerable<ParsedOption> parsedOptions)
         {
             if (OptionsNames.Any(optName => TryFindParsedOption(parsedOptions, optName, out _)))
@@ -41,7 +46,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
             return [];
         }
         
-        // Private helpers.
+        // Helpers.
         private static string ComposeSentence(IEnumerable<string> optNames) =>
             string.Join(", ", optNames) + (optNames.Count() == 1 ? " is forbidden." : " are forbidden.");
     }

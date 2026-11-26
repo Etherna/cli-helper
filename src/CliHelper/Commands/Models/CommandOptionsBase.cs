@@ -20,14 +20,32 @@ using System.Linq;
 
 namespace Etherna.CliHelper.Commands.Models
 {
+    /// <summary>
+    /// Base class of the options of a command: their definitions, and the requirements they have to satisfy.
+    /// </summary>
     public abstract class CommandOptionsBase
     {
         // Properties.
+        /// <summary>
+        /// Whether some of the options are required, with a <see cref="RequireOneOfOptionRequirement"/>.
+        /// </summary>
         public bool AreRequired => Requirements.OfType<RequireOneOfOptionRequirement>().Any();
+        /// <summary>
+        /// The definitions of the options.
+        /// </summary>
         public abstract IEnumerable<CommandOption> Definitions { get; }
+        /// <summary>
+        /// The requirements the options have to satisfy, verified after the args are parsed. None by default.
+        /// </summary>
         public virtual IEnumerable<OptionRequirementBase> Requirements => [];
         
         // Methods.
+        /// <summary>
+        /// Find the definition of an option by its short or long name.
+        /// </summary>
+        /// <param name="name">The short or long name of the option</param>
+        /// <returns>The option definition</returns>
+        /// <exception cref="InvalidOperationException">No option has the name</exception>
         public CommandOption FindOptionByName(string name) =>
             Definitions.First(o => o.ShortName == name || o.LongName == name);
         
@@ -35,11 +53,13 @@ namespace Etherna.CliHelper.Commands.Models
         /// Parse the options at the start of args, against these options alone.
         /// Short options compose POSIX style: "-ab" is "-a -b", and an option requiring args ends the group,
         /// taking the rest of it as its first arg ("-nvalue", "-anvalue"), or the following args when nothing
-        /// is left ("-an value")
+        /// is left ("-an value").
         /// </summary>
         /// <param name="args">Input args</param>
         /// <param name="ioService">Where to report the violated requirements</param>
         /// <returns>Found option args counter</returns>
+        /// <exception cref="ArgumentException">The args are not valid options, or they violate a requirement.
+        /// The message is meant for the user</exception>
         public int ParseArgs(
             string[] args,
             IIoService ioService)

@@ -42,17 +42,25 @@ namespace Etherna.CliHelper.AotCompatibility
         }
 
         // Checks.
-        private static async Task<string> VerifyRootHelpAsync()
+        private static async Task<string> VerifyInvalidCommandAsync()
         {
-            var (io, exception) = await RunAsync().ConfigureAwait(false);
-            ThrowIfFailed(exception);
+            var (_, exception) = await RunAsync("unknown").ConfigureAwait(false);
+            if (exception is not ArgumentException { Message: "root: 'unknown' is not a valid command." })
+                throw new InvalidOperationException("Unknown command was not rejected.", exception);
 
-            Require(io.Output, "Usage:  root COMMAND");
-            Require(io.Output, "  greet    Greet someone");
-            Require(io.Output, "  tools    Group of tools");
-            Require(io.Output, "Run 'root COMMAND -h'");
+            return "rejected an unknown command";
+        }
 
-            return "printed root help, listing the sub commands";
+        private static async Task<string> VerifyOptionRequirementsAsync()
+        {
+            var (io, exception) = await RunAsync("greet", "--times", "0").ConfigureAwait(false);
+            if (exception is not ArgumentException { Message: "Errors with command options" })
+                throw new InvalidOperationException("Invalid options were accepted.", exception);
+
+            Require(io.Error, "--name is required.");
+            Require(io.Error, "--times has min value 1.");
+
+            return "rejected invalid options, reporting every requirement violated";
         }
 
         private static async Task<string> VerifyOptionsAsync()
@@ -81,16 +89,17 @@ namespace Etherna.CliHelper.AotCompatibility
             return "printed options help, with arguments and requirements";
         }
 
-        private static async Task<string> VerifyOptionRequirementsAsync()
+        private static async Task<string> VerifyRootHelpAsync()
         {
-            var (io, exception) = await RunAsync("greet", "--times", "0").ConfigureAwait(false);
-            if (exception is not ArgumentException { Message: "Errors with command options" })
-                throw new InvalidOperationException("Invalid options were accepted.", exception);
+            var (io, exception) = await RunAsync().ConfigureAwait(false);
+            ThrowIfFailed(exception);
 
-            Require(io.Error, "--name is required.");
-            Require(io.Error, "--times has min value 1.");
+            Require(io.Output, "Usage:  root COMMAND");
+            Require(io.Output, "  greet    Greet someone");
+            Require(io.Output, "  tools    Group of tools");
+            Require(io.Output, "Run 'root COMMAND -h'");
 
-            return "rejected invalid options, reporting every requirement violated";
+            return "printed root help, listing the sub commands";
         }
 
         private static async Task<string> VerifySubCommandWithDependencyAsync()
@@ -103,15 +112,6 @@ namespace Etherna.CliHelper.AotCompatibility
                 throw new InvalidOperationException($"Unexpected output \"{io.Output}\".");
 
             return "dispatched a nested command built with a constructor dependency";
-        }
-
-        private static async Task<string> VerifyInvalidCommandAsync()
-        {
-            var (_, exception) = await RunAsync("unknown").ConfigureAwait(false);
-            if (exception is not ArgumentException { Message: "root: 'unknown' is not a valid command." })
-                throw new InvalidOperationException("Unknown command was not rejected.", exception);
-
-            return "rejected an unknown command";
         }
 
         // Helpers.
@@ -137,6 +137,13 @@ namespace Etherna.CliHelper.AotCompatibility
         }
 
         // Runs the root command on a fresh container, so every check starts with an empty io.
+        // The command tree:
+        //   root
+        //   ├── greet   (options, with requirements)
+        //   └── tools
+        //       └── echo   (constructor dependency resolved by the container)
+        // None of these types is ever instantiated directly: the library creates them by reflection
+        // over their constructors, the path that breaks first when trimming removes metadata.
         private static async Task<(CapturingIoService Io, ArgumentException? Exception)> RunAsync(params string[] args)
         {
             var services = new ServiceCollection();

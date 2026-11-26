@@ -12,19 +12,24 @@
 // You should have received a copy of the GNU Lesser General Public License along with Cli Helper.
 // If not, see <https://www.gnu.org/licenses/>.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
+    /// <summary>
+    /// Requires at most one of the options.
+    /// </summary>
+    /// <param name="optionsNames">The names of the mutually exclusive options, short or long</param>
     public class ExclusiveOptionRequirement(params string[] optionsNames)
         : OptionRequirementBase(optionsNames)
     {
         // Methods.
+        /// <inheritdoc />
         public override string PrintHelpLine(CommandOptionsBase commandOptions) =>
             ComposeSentence(OptionsNames.Select(n => commandOptions.FindOptionByName(n).LongName));
 
+        /// <inheritdoc />
         public override IEnumerable<OptionRequirementError> ValidateOptions(
             CommandOptionsBase commandOptions,
             IEnumerable<ParsedOption> parsedOptions)
@@ -42,7 +47,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
             return [];
         }
         
-        // Private helpers.
+        // Helpers.
         private static string ComposeSentence(IEnumerable<string> optNames) =>
             $"{string.Join(", ", optNames)} are mutual exclusive.";
     }

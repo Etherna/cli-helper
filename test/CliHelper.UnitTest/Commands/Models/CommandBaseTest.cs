@@ -35,6 +35,34 @@ namespace Etherna.CliHelper.Commands.Models
         //   ├── echo        runs with no args
         //   ├── index       -i/--index-filename string, conflicting with the root short name
         //   └── tag         -x/--api-key, conflicting with the root long name
+        private sealed class CapturingIoService : IIoService
+        {
+            private readonly StringBuilder error = new();
+            private readonly StringBuilder output = new();
+
+            public string Error => error.ToString();
+            public string Output => output.ToString();
+
+            public ConsoleKeyInfo ReadKey() => throw new NotSupportedException();
+            public string? ReadLine() => null;
+            public void Write(string? value) => output.Append(value);
+            public void WriteError(string value) => error.Append(value);
+            public void WriteErrorLine(string value) => error.AppendLine(value);
+            public void WriteLine(string? value = null) => output.AppendLine(value);
+        }
+
+        private sealed class EchoCommand(ExecutionRecorder recorder) : CommandBase
+        {
+            public override string Description => "Echo args";
+            public override bool PrintHelpWithNoArgs => false;
+
+            protected override Task ExecuteAsync(string[] commandArgs)
+            {
+                recorder.EchoArgs = commandArgs;
+                return Task.CompletedTask;
+            }
+        }
+
         private sealed class ExecutionRecorder
         {
             public string[]? EchoArgs { get; set; }
@@ -50,20 +78,80 @@ namespace Etherna.CliHelper.Commands.Models
             public bool RootIgnoreUpdate { get; set; }
         }
 
-        private sealed class CapturingIoService : IIoService
+        private sealed class FundCommand(ExecutionRecorder recorder) : CommandBase<FundCommandOptions>
         {
-            private readonly StringBuilder error = new();
-            private readonly StringBuilder output = new();
+            public override string CommandArgsHelpString => "RESOURCE_ID";
+            public override string Description => "Fund a resource";
 
-            public string Error => error.ToString();
-            public string Output => output.ToString();
+            protected override Task ExecuteAsync(string[] commandArgs)
+            {
+                recorder.FundArgs = commandArgs;
+                recorder.FundPin = Options.Pin;
+                recorder.FundTraffic = Options.Traffic;
+                return Task.CompletedTask;
+            }
+        }
 
-            public ConsoleKeyInfo ReadKey() => throw new NotSupportedException();
-            public string? ReadLine() => null;
-            public void Write(string? value) => output.Append(value);
-            public void WriteError(string value) => error.Append(value);
-            public void WriteErrorLine(string value) => error.AppendLine(value);
-            public void WriteLine(string? value = null) => output.AppendLine(value);
+        private sealed class FundCommandOptions : CommandOptionsBase
+        {
+            public bool Pin { get; private set; }
+            public bool Traffic { get; private set; }
+
+            public override IEnumerable<CommandOption> Definitions =>
+            [
+                new("-p", "--pin", "Fund pinning", _ => Pin = true),
+                new("-t", "--traffic", "Fund traffic", _ => Traffic = true)
+            ];
+
+            public override IEnumerable<OptionRequirementBase> Requirements =>
+            [
+                new RequireOneOfOptionRequirement("-p", "-t")
+            ];
+        }
+
+        private sealed class IndexCommand : CommandBase<IndexCommandOptions>
+        {
+            public override string Description => "Index things";
+
+            protected override Task ExecuteAsync(string[] commandArgs) => Task.CompletedTask;
+        }
+
+        private sealed class IndexCommandOptions : CommandOptionsBase
+        {
+            public override IEnumerable<CommandOption> Definitions =>
+            [
+                new("-i", "--index-filename", "Index file name", _ => { }, [typeof(string)])
+            ];
+        }
+
+        private sealed class ListCommand(ExecutionRecorder recorder) : CommandBase<ListCommandOptions>
+        {
+            public override string Description => "List resources";
+
+            protected override Task ExecuteAsync(string[] commandArgs)
+            {
+                recorder.ListExecuted = true;
+                recorder.ListAll = Options.All;
+                recorder.ListHidden = Options.Hidden;
+                return Task.CompletedTask;
+            }
+        }
+
+        private sealed class ListCommandOptions : CommandOptionsBase
+        {
+            public bool All { get; private set; }
+            public bool Hidden { get; private set; }
+
+            public override IEnumerable<CommandOption> Definitions =>
+            [
+                new("-a", "--all", "List all", _ => All = true),
+                new("-h", "--hidden", "List hidden", _ => Hidden = true)
+            ];
+        }
+
+        private sealed class ResourceCommand : CommandBase
+        {
+            public override string Description => "Manage resources";
         }
 
         private sealed class RootCommand(ExecutionRecorder recorder) : CommandBase<RootCommandOptions>
@@ -101,93 +189,10 @@ namespace Etherna.CliHelper.Commands.Models
             ];
         }
 
-        private sealed class ResourceCommand : CommandBase
-        {
-            public override string Description => "Manage resources";
-        }
-
-        private sealed class FundCommand(ExecutionRecorder recorder) : CommandBase<FundCommandOptions>
-        {
-            public override string CommandArgsHelpString => "RESOURCE_ID";
-            public override string Description => "Fund a resource";
-
-            protected override Task ExecuteAsync(string[] commandArgs)
-            {
-                recorder.FundArgs = commandArgs;
-                recorder.FundPin = Options.Pin;
-                recorder.FundTraffic = Options.Traffic;
-                return Task.CompletedTask;
-            }
-        }
-
-        private sealed class FundCommandOptions : CommandOptionsBase
-        {
-            public bool Pin { get; private set; }
-            public bool Traffic { get; private set; }
-
-            public override IEnumerable<CommandOption> Definitions =>
-            [
-                new("-p", "--pin", "Fund pinning", _ => Pin = true),
-                new("-t", "--traffic", "Fund traffic", _ => Traffic = true)
-            ];
-
-            public override IEnumerable<OptionRequirementBase> Requirements =>
-            [
-                new RequireOneOfOptionRequirement("-p", "-t")
-            ];
-        }
-
-        private sealed class ListCommand(ExecutionRecorder recorder) : CommandBase<ListCommandOptions>
-        {
-            public override string Description => "List resources";
-
-            protected override Task ExecuteAsync(string[] commandArgs)
-            {
-                recorder.ListExecuted = true;
-                recorder.ListAll = Options.All;
-                recorder.ListHidden = Options.Hidden;
-                return Task.CompletedTask;
-            }
-        }
-
-        private sealed class ListCommandOptions : CommandOptionsBase
-        {
-            public bool All { get; private set; }
-            public bool Hidden { get; private set; }
-
-            public override IEnumerable<CommandOption> Definitions =>
-            [
-                new("-a", "--all", "List all", _ => All = true),
-                new("-h", "--hidden", "List hidden", _ => Hidden = true)
-            ];
-        }
-
-        private sealed class EchoCommand(ExecutionRecorder recorder) : CommandBase
-        {
-            public override string Description => "Echo args";
-            public override bool PrintHelpWithNoArgs => false;
-
-            protected override Task ExecuteAsync(string[] commandArgs)
-            {
-                recorder.EchoArgs = commandArgs;
-                return Task.CompletedTask;
-            }
-        }
-
-        private sealed class IndexCommand : CommandBase<IndexCommandOptions>
-        {
-            public override string Description => "Index things";
-
-            protected override Task ExecuteAsync(string[] commandArgs) => Task.CompletedTask;
-        }
-
-        private sealed class IndexCommandOptions : CommandOptionsBase
-        {
-            public override IEnumerable<CommandOption> Definitions =>
-            [
-                new("-i", "--index-filename", "Index file name", _ => { }, [typeof(string)])
-            ];
-        }
+        private sealed record RunResult(
+            ExecutionRecorder Recorder,
+            CapturingIoService Io,
+            Exception? Exception);
 
         private sealed class TagCommand : CommandBase<TagCommandOptions>
         {
@@ -203,11 +208,6 @@ namespace Etherna.CliHelper.Commands.Models
                 new("-x", "--api-key", "Tag api key", _ => { }, [typeof(string)])
             ];
         }
-
-        private sealed record RunResult(
-            ExecutionRecorder Recorder,
-            CapturingIoService Io,
-            Exception? Exception);
 
         // Consts.
         private static readonly string FundHelp = JoinLines(
@@ -295,11 +295,11 @@ namespace Etherna.CliHelper.Commands.Models
 
         public static TheoryData<string[]> PathOptionsArgs => new()
         {
-            new[] { "-k", "KEY", "-i", "resource", "fund", "-p", "RES_ID" }, //each one right after its command
-            new[] { "resource", "fund", "-p", "-k", "KEY", "-i", "RES_ID" }, //all after the last command
-            new[] { "resource", "-i", "fund", "-k", "KEY", "-p", "RES_ID" }, //mixed
-            new[] { "resource", "fund", "-pi", "-kKEY", "RES_ID" },          //composed across commands
-            new[] { "resource", "fund", "--api-key", "KEY", "--ignore-update", "--pin", "RES_ID" } //long names
+            { ["-k", "KEY", "-i", "resource", "fund", "-p", "RES_ID"] }, //each one right after its command
+            { ["resource", "fund", "-p", "-k", "KEY", "-i", "RES_ID"] }, //all after the last command
+            { ["resource", "-i", "fund", "-k", "KEY", "-p", "RES_ID"] }, //mixed
+            { ["resource", "fund", "-pi", "-kKEY", "RES_ID"] },          //composed across commands
+            { ["resource", "fund", "--api-key", "KEY", "--ignore-update", "--pin", "RES_ID"] } //long names
         };
 
         public static TheoryData<string[], string> RequirementErrorArgs => new()
@@ -317,12 +317,90 @@ namespace Etherna.CliHelper.Commands.Models
         };
 
         // Tests.
+        [Fact]
+        public async Task RunAsyncConsumesOptionArgsBeforeResolvingCommands()
+        {
+            // Action.
+            var result = await RunAsync("-k", "resource", "resource", "fund", "-p", "RES_ID");
+
+            // Assert.
+            Assert.Null(result.Exception);
+            Assert.Equal("resource", result.Recorder.RootApiKey);
+            Assert.True(result.Recorder.FundPin);
+            Assert.Equal(new[] { "RES_ID" }, result.Recorder.FundArgs);
+        }
+
+        [Fact]
+        public async Task RunAsyncDoesNotParseOptionsOfCommandsOutOfThePath()
+        {
+            // Action.
+            var result = await RunAsync<ResourceCommand>("fund", "-k", "KEY", "-p", "RES_ID");
+
+            // Assert.
+            Assert.IsType<ArgumentException>(result.Exception);
+            Assert.Equal("-k is not a valid option", result.Exception.Message);
+        }
+
+        [Fact]
+        public async Task RunAsyncExecutesALeafGivenOnlyOptions()
+        {
+            // Action.
+            var result = await RunAsync("resource", "list", "-a");
+
+            // Assert.
+            Assert.Null(result.Exception);
+            Assert.True(result.Recorder.ListExecuted);
+            Assert.True(result.Recorder.ListAll);
+            Assert.Equal("", result.Io.Output);
+        }
+
+        [Theory]
+        [InlineData(new[] { "echo" }, new string[0])]
+        [InlineData(new[] { "-i", "echo", "a", "-b" }, new[] { "a", "-b" })]
+        public async Task RunAsyncExecutesALeafNotPrintingHelpWithNoArgs(string[] args, string[] expectedArgs)
+        {
+            // Action.
+            var result = await RunAsync(args);
+
+            // Assert.
+            Assert.Null(result.Exception);
+            Assert.Equal(expectedArgs, result.Recorder.EchoArgs);
+            Assert.Equal("", result.Io.Output);
+        }
+
+        [Fact]
+        public async Task RunAsyncKeepsOptionsAfterCommandArgsAsArgs()
+        {
+            // Action.
+            var result = await RunAsync("resource", "fund", "-p", "RES_ID", "-k", "KEY");
+
+            // Assert.
+            Assert.Null(result.Exception);
+            Assert.Null(result.Recorder.RootApiKey);
+            Assert.Equal(new[] { "RES_ID", "-k", "KEY" }, result.Recorder.FundArgs);
+        }
+
+        [Fact]
+        public async Task RunAsyncParsesHelpNamesDefinedAsOptions()
+        {
+            // Action.
+            var result = await RunAsync("resource", "list", "-h");
+
+            // Assert.
+            Assert.Null(result.Exception);
+            Assert.True(result.Recorder.ListExecuted);
+            Assert.True(result.Recorder.ListHidden);
+            Assert.Equal("", result.Io.Output);
+        }
+
         [Theory]
         [MemberData(nameof(PathOptionsArgs))]
         public async Task RunAsyncParsesOptionsOfThePathAnywhereAfterTheirCommand(string[] args)
         {
+            // Action.
             var result = await RunAsync(args);
 
+            // Assert.
             Assert.Null(result.Exception);
             Assert.True(result.Recorder.RootExecuted);
             Assert.Equal("KEY", result.Recorder.RootApiKey);
@@ -335,89 +413,41 @@ namespace Etherna.CliHelper.Commands.Models
         }
 
         [Fact]
-        public async Task RunAsyncConsumesOptionArgsBeforeResolvingCommands()
+        public async Task RunAsyncPrintsHelpOfALeafDefiningHelpNamesAsOptions()
         {
-            var result = await RunAsync("-k", "resource", "resource", "fund", "-p", "RES_ID");
+            // Action.
+            var result = await RunAsync("resource", "list", "--help");
 
+            // Assert.
             Assert.Null(result.Exception);
-            Assert.Equal("resource", result.Recorder.RootApiKey);
-            Assert.True(result.Recorder.FundPin);
-            Assert.Equal(new[] { "RES_ID" }, result.Recorder.FundArgs);
-        }
-
-        [Fact]
-        public async Task RunAsyncKeepsOptionsAfterCommandArgsAsArgs()
-        {
-            var result = await RunAsync("resource", "fund", "-p", "RES_ID", "-k", "KEY");
-
-            Assert.Null(result.Exception);
-            Assert.Null(result.Recorder.RootApiKey);
-            Assert.Equal(new[] { "RES_ID", "-k", "KEY" }, result.Recorder.FundArgs);
-        }
-
-        [Fact]
-        public async Task RunAsyncExecutesALeafGivenOnlyOptions()
-        {
-            var result = await RunAsync("resource", "list", "-a");
-
-            Assert.Null(result.Exception);
-            Assert.True(result.Recorder.ListExecuted);
-            Assert.True(result.Recorder.ListAll);
-            Assert.Equal("", result.Io.Output);
+            Assert.False(result.Recorder.ListExecuted);
+            Assert.StartsWith(JoinLines("root resource list", "List resources"), result.Io.Output, StringComparison.Ordinal);
         }
 
         [Theory]
-        [InlineData(new[] { "echo" }, new string[0])]
-        [InlineData(new[] { "-i", "echo", "a", "-b" }, new[] { "a", "-b" })]
-        public async Task RunAsyncExecutesALeafNotPrintingHelpWithNoArgs(string[] args, string[] expectedArgs)
+        [MemberData(nameof(HelpArgs))]
+        public async Task RunAsyncPrintsHelpOfTheCommandReached(string[] args, string expectedHelp)
         {
+            // Action.
             var result = await RunAsync(args);
 
-            Assert.Null(result.Exception);
-            Assert.Equal(expectedArgs, result.Recorder.EchoArgs);
-            Assert.Equal("", result.Io.Output);
-        }
-
-        [Fact]
-        public async Task RunAsyncParsesHelpNamesDefinedAsOptions()
-        {
-            var result = await RunAsync("resource", "list", "-h");
-
-            Assert.Null(result.Exception);
-            Assert.True(result.Recorder.ListExecuted);
-            Assert.True(result.Recorder.ListHidden);
-            Assert.Equal("", result.Io.Output);
-        }
-
-        [Fact]
-        public async Task RunAsyncResolvesThePathFromTheCommandItRunsOn()
-        {
-            var result = await RunAsync<ResourceCommand>("fund", "-p", "RES_ID");
-
+            // Assert.
             Assert.Null(result.Exception);
             Assert.False(result.Recorder.RootExecuted);
-            Assert.True(result.Recorder.FundPin);
-            Assert.Equal(new[] { "RES_ID" }, result.Recorder.FundArgs);
-        }
-
-        [Fact]
-        public async Task RunAsyncDoesNotParseOptionsOfCommandsOutOfThePath()
-        {
-            var result = await RunAsync<ResourceCommand>("fund", "-k", "KEY", "-p", "RES_ID");
-
-            Assert.IsType<ArgumentException>(result.Exception);
-            Assert.Equal("-k is not a valid option", result.Exception.Message);
+            Assert.Equal(expectedHelp, result.Io.Output);
         }
 
         [Theory]
-        [MemberData(nameof(RequirementErrorArgs))]
-        public async Task RunAsyncVerifiesRequirementsOfThePathBeforeExecutingAnyCommand(string[] args, string expectedError)
+        [InlineData(new[] { "index", "-i", "file" }, "Option -i of command 'root index' is already defined by command 'root'")]
+        [InlineData(new[] { "tag" }, "Option --api-key of command 'root tag' is already defined by command 'root'")]
+        public async Task RunAsyncRejectsConflictingOptionsOnThePath(string[] args, string expectedMessage)
         {
+            // Action.
             var result = await RunAsync(args);
 
-            Assert.IsType<ArgumentException>(result.Exception);
-            Assert.Equal("Errors with command options", result.Exception.Message);
-            Assert.Equal(expectedError, result.Io.Error);
+            // Assert.
+            Assert.IsType<InvalidOperationException>(result.Exception);
+            Assert.Equal(expectedMessage, result.Exception.Message);
             Assert.False(result.Recorder.RootExecuted);
         }
 
@@ -429,8 +459,10 @@ namespace Etherna.CliHelper.Commands.Models
         [InlineData(new[] { "-i", "resource", "fund", "--ignore-update", "-p", "RES_ID" }, "--ignore-update option is duplicate")]
         public async Task RunAsyncRejectsInvalidOptionsBeforeExecutingAnyCommand(string[] args, string expectedMessage)
         {
+            // Action.
             var result = await RunAsync(args);
 
+            // Assert.
             Assert.IsType<ArgumentException>(result.Exception);
             Assert.Equal(expectedMessage, result.Exception.Message);
             Assert.False(result.Recorder.RootExecuted);
@@ -444,43 +476,39 @@ namespace Etherna.CliHelper.Commands.Models
         [InlineData(new[] { "resource", "unknown" }, "root resource: 'unknown' is not a valid command.")]
         public async Task RunAsyncRejectsInvalidSubCommandsOnDispatch(string[] args, string expectedMessage)
         {
+            // Action.
             var result = await RunAsync(args);
 
+            // Assert.
             Assert.IsType<ArgumentException>(result.Exception);
             Assert.Equal(expectedMessage, result.Exception.Message);
         }
 
-        [Theory]
-        [InlineData(new[] { "index", "-i", "file" }, "Option -i of command 'root index' is already defined by command 'root'")]
-        [InlineData(new[] { "tag" }, "Option --api-key of command 'root tag' is already defined by command 'root'")]
-        public async Task RunAsyncRejectsConflictingOptionsOnThePath(string[] args, string expectedMessage)
-        {
-            var result = await RunAsync(args);
-
-            Assert.IsType<InvalidOperationException>(result.Exception);
-            Assert.Equal(expectedMessage, result.Exception.Message);
-            Assert.False(result.Recorder.RootExecuted);
-        }
-
-        [Theory]
-        [MemberData(nameof(HelpArgs))]
-        public async Task RunAsyncPrintsHelpOfTheCommandReached(string[] args, string expectedHelp)
-        {
-            var result = await RunAsync(args);
-
-            Assert.Null(result.Exception);
-            Assert.False(result.Recorder.RootExecuted);
-            Assert.Equal(expectedHelp, result.Io.Output);
-        }
-
         [Fact]
-        public async Task RunAsyncPrintsHelpOfALeafDefiningHelpNamesAsOptions()
+        public async Task RunAsyncResolvesThePathFromTheCommandItRunsOn()
         {
-            var result = await RunAsync("resource", "list", "--help");
+            // Action.
+            var result = await RunAsync<ResourceCommand>("fund", "-p", "RES_ID");
 
+            // Assert.
             Assert.Null(result.Exception);
-            Assert.False(result.Recorder.ListExecuted);
-            Assert.StartsWith(JoinLines("root resource list", "List resources"), result.Io.Output, StringComparison.Ordinal);
+            Assert.False(result.Recorder.RootExecuted);
+            Assert.True(result.Recorder.FundPin);
+            Assert.Equal(new[] { "RES_ID" }, result.Recorder.FundArgs);
+        }
+
+        [Theory]
+        [MemberData(nameof(RequirementErrorArgs))]
+        public async Task RunAsyncVerifiesRequirementsOfThePathBeforeExecutingAnyCommand(string[] args, string expectedError)
+        {
+            // Action.
+            var result = await RunAsync(args);
+
+            // Assert.
+            Assert.IsType<ArgumentException>(result.Exception);
+            Assert.Equal("Errors with command options", result.Exception.Message);
+            Assert.Equal(expectedError, result.Io.Error);
+            Assert.False(result.Recorder.RootExecuted);
         }
 
         // Helpers.

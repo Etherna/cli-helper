@@ -18,9 +18,20 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Etherna.CliHelper.Commands
 {
+    /// <summary>
+    /// Configures a level of the command tree. Every command added is registered on the service collection,
+    /// with its sub commands.
+    /// </summary>
     public interface ICommandManagerConfiguration
     {
-        public ICommandManagerConfiguration AddCommand<
+        // Methods.
+        /// <summary>
+        /// Add a command at this level of the tree, with its sub commands.
+        /// </summary>
+        /// <typeparam name="TCommand">The command type</typeparam>
+        /// <param name="configSubCommands">Adds the sub commands of the command, on its own configuration</param>
+        /// <returns>This configuration, to add more commands at the same level</returns>
+        ICommandManagerConfiguration AddCommand<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TCommand>(
             Action<ICommandManagerConfiguration>? configSubCommands = null)
             where TCommand : CommandBase;

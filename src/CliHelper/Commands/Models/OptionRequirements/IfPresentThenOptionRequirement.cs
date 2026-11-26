@@ -18,37 +18,43 @@ using System.Linq;
 
 namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
+    /// <summary>
+    /// Verifies another requirement when an option is present.
+    /// </summary>
+    /// <param name="optionsName">The name of the option, short or long</param>
+    /// <param name="thenRequirement">The requirement verified when the option is present</param>
     public class IfPresentThenOptionRequirement(
         string optionsName,
         OptionRequirementBase thenRequirement)
         : OptionRequirementBase([optionsName])
     {
         // Methods.
+        /// <inheritdoc />
         public override string PrintHelpLine(CommandOptionsBase commandOptions)
         {
-            ArgumentNullException.ThrowIfNull(commandOptions, nameof(commandOptions));
+            ArgumentNullException.ThrowIfNull(commandOptions);
             
             return ComposeSentence(
                 commandOptions.FindOptionByName(OptionsNames.First()).LongName,
-                thenRequirement.PrintHelpLine(commandOptions),
-                commandOptions);
+                thenRequirement.PrintHelpLine(commandOptions));
         }
 
+        /// <inheritdoc />
         public override IEnumerable<OptionRequirementError> ValidateOptions(CommandOptionsBase commandOptions, IEnumerable<ParsedOption> parsedOptions)
         {
             var optName = OptionsNames.First();
             
-            if (!TryFindParsedOption(parsedOptions, optName, out var parsedOption))
+            if (!TryFindParsedOption(parsedOptions, optName, out _))
                 return [];
 
             var thenErrors = thenRequirement.ValidateOptions(commandOptions, parsedOptions);
 
             return thenErrors.Select(thenError =>
-                new OptionRequirementError(ComposeSentence(optName, thenError.Message, commandOptions)));
+                new OptionRequirementError(ComposeSentence(optName, thenError.Message)));
         }
-        
-        // Private helpers.
-        private static string ComposeSentence(string optName, string thenMessageLine, CommandOptionsBase commandOptions) =>
+
+        // Helpers.
+        private static string ComposeSentence(string optName, string thenMessageLine) =>
             $"If {optName} is present then {thenMessageLine}";
     }
 }

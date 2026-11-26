@@ -23,6 +23,11 @@ using System.Threading.Tasks;
 
 namespace Etherna.CliHelper.Commands.Models
 {
+    /// <summary>
+    /// Base class of the commands. The name of a command is its type name without "Command", lowercased:
+    /// <c>ResourceCommand</c> is <c>resource</c>. Commands are registered with
+    /// <see cref="ICommandManagerConfiguration"/> and created by <see cref="ICommandManager"/>.
+    /// </summary>
     [SuppressMessage("Globalization", "CA1305:Specify IFormatProvider")]
     public abstract class CommandBase
     {
@@ -31,20 +36,37 @@ namespace Etherna.CliHelper.Commands.Models
         private CommandBase? resolvedSubCommand;
 
         // Properties.
+        /// <summary>
+        /// The args of the command in its usage help, after the options. "COMMAND" when it has sub commands,
+        /// empty otherwise.
+        /// </summary>
+        public virtual string CommandArgsHelpString => HasSubCommands ? "COMMAND" : "";
+        /// <summary>
+        /// The manager that created the command, through which it navigates the command tree.
+        /// </summary>
         public required ICommandManager CommandManager
         {
             get => _commandManager;
             set => _commandManager = value;
         }
+        /// <summary>
+        /// The names of the commands of the path, from the root to this command, space separated.
+        /// </summary>
         public string CommandPathNames => string.Join(' ', CommandPathTypes.Select(GetCommandNameFromType));
+        /// <summary>
+        /// The types of the commands of the path, from the root to this command.
+        /// </summary>
         public IEnumerable<Type> CommandPathTypes => CommandManager.GetCommandPathTypes(GetType());
-        public virtual string CommandArgsHelpString => HasSubCommands ? "COMMAND" : "";
+        /// <summary>
+        /// The usage of the command in its help: the path, then "OPTIONS" when a command of the path has options
+        /// ("[OPTIONS]" when none of them is required), then <see cref="CommandArgsHelpString"/>.
+        /// </summary>
         public string CommandPathUsageHelpString
         {
             get
             {
                 var pathCommands = CommandPathTypes.Select(CommandManager.CreateCommand).ToArray();
-                var usageParts = new List<string> { CommandPathNames };
+                List<string> usageParts = [CommandPathNames];
                 if (pathCommands.Any(c => c.HasOptions))
                     usageParts.Add(pathCommands.Any(c => c.HasRequiredOptions) ? "OPTIONS" : "[OPTIONS]");
                 if (CommandArgsHelpString.Length != 0)
@@ -52,28 +74,62 @@ namespace Etherna.CliHelper.Commands.Models
                 return string.Join(' ', usageParts);
             }
         }
+        /// <summary>
+        /// The description of the command, in the help.
+        /// </summary>
         public abstract string Description { get; }
+        /// <summary>
+        /// Whether the command defines options.
+        /// </summary>
         public virtual bool HasOptions => false;
+        /// <summary>
+        /// Whether the command requires some of its options, with a
+        /// <see cref="OptionRequirements.RequireOneOfOptionRequirement"/>.
+        /// </summary>
         public virtual bool HasRequiredOptions => false;
+        /// <summary>
+        /// Whether the command has sub commands.
+        /// </summary>
         public bool HasSubCommands => SubCommandTypes.Any();
+        /// <summary>
+        /// Whether the command is the root of the application: its help also explains how to get the help of
+        /// a sub command. False by default.
+        /// </summary>
         public virtual bool IsRootCommand => false;
+        /// <summary>
+        /// The name of the command: its type name without "Command", lowercased.
+        /// </summary>
         public string Name => GetCommandNameFromType(GetType());
+        /// <summary>
+        /// Whether the command prints its help when nothing follows it in the args, instead of being executed.
+        /// True by default.
+        /// </summary>
         public virtual bool PrintHelpWithNoArgs => true;
+        /// <summary>
+        /// The types of the sub commands, in their registration order.
+        /// </summary>
         public IEnumerable<Type> SubCommandTypes => CommandManager.GetCommandSubTypes(GetType());
         
         // Protected properties.
+        /// <summary>
+        /// The io service the command reads and writes through.
+        /// </summary>
         protected IIoService IoService => CommandManager.IoService;
         
         // Internal properties.
         internal virtual CommandOptionsBase? CommandOptions => null;
 
-        // Public methods.
+        // Methods.
         /// <summary>
         /// Run the command. Args hold the sub commands to run, followed by the command args. The options of every
         /// command of the path can be anywhere after the command defining them, and before the command args.
         /// The options of the whole path are parsed and verified before any command is executed.
         /// </summary>
         /// <param name="args">Input args</param>
+        /// <exception cref="ArgumentException">The args are not valid, like an unknown command or option, or they
+        /// violate an option requirement. The message is meant for the user</exception>
+        /// <exception cref="InvalidOperationException">A command of the path defines an option name already
+        /// defined by one of its ancestors</exception>
         public async Task RunAsync(string[] args)
         {
             ArgumentNullException.ThrowIfNull(args);
@@ -126,6 +182,11 @@ namespace Etherna.CliHelper.Commands.Models
         }
         
         // Protected methods.
+        /// <summary>
+        /// Append the help of the options defined by the command. The options of its ancestors and the option
+        /// requirements follow it in the help.
+        /// </summary>
+        /// <param name="strBuilder">The builder of the help</param>
         protected virtual void AppendOptionsHelp(StringBuilder strBuilder)
         {
             ArgumentNullException.ThrowIfNull(strBuilder);
@@ -135,7 +196,8 @@ namespace Etherna.CliHelper.Commands.Models
         }
         
         /// <summary>
-        /// Execute the command, after its path has been resolved and the options parsed
+        /// Execute the command, after its path has been resolved and the options parsed. By default it executes
+        /// the resolved sub command: an override calls <see cref="ExecuteSubCommandAsync"/> to continue the path.
         /// </summary>
         /// <param name="commandArgs">The args following the commands path, and its options</param>
         protected virtual async Task ExecuteAsync(string[] commandArgs)
@@ -145,9 +207,11 @@ namespace Etherna.CliHelper.Commands.Models
         }
 
         /// <summary>
-        /// Execute the sub command resolved from the args
+        /// Execute the sub command resolved from the args.
         /// </summary>
         /// <param name="commandArgs">The args following the commands path, and its options</param>
+        /// <exception cref="ArgumentException">No sub command has been resolved: the command args are empty,
+        /// or begin with an unknown command</exception>
         protected async Task ExecuteSubCommandAsync(string[] commandArgs)
         {
             ArgumentNullException.ThrowIfNull(commandArgs);
@@ -161,9 +225,15 @@ namespace Etherna.CliHelper.Commands.Models
         }
         
         // Protected helpers.
+        /// <summary>
+        /// Get the name of a command from its type: the type name without "Command", lowercased.
+        /// </summary>
+        /// <param name="commandType">The command type</param>
+        /// <returns>The command name</returns>
+        /// <exception cref="ArgumentException">The type is not a command type</exception>
         protected static string GetCommandNameFromType(Type commandType)
         {
-            ArgumentNullException.ThrowIfNull(commandType, nameof(commandType));
+            ArgumentNullException.ThrowIfNull(commandType);
             
             if (!typeof(CommandBase).IsAssignableFrom(commandType))
                 throw new ArgumentException($"{commandType.Name} is not a command type");
@@ -280,12 +350,21 @@ namespace Etherna.CliHelper.Commands.Models
         }
     }
     
+    /// <summary>
+    /// Base class of the commands with options.
+    /// </summary>
+    /// <typeparam name="TOptions">The options of the command</typeparam>
     public abstract class CommandBase<TOptions> : CommandBase
         where TOptions : CommandOptionsBase, new()
     {
         // Properties.
+        /// <inheritdoc />
         public override bool HasOptions => true;
+        /// <inheritdoc />
         public override bool HasRequiredOptions => Options.AreRequired;
+        /// <summary>
+        /// The options of the command, set from the args before it is executed.
+        /// </summary>
         public TOptions Options { get; } = new();
         
         // Internal properties.

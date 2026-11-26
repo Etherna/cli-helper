@@ -17,21 +17,47 @@ using System.Linq;
 
 namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
+    /// <summary>
+    /// Base class of a requirement on the options of a command, verified after the args are parsed, and
+    /// described in the help.
+    /// </summary>
+    /// <param name="optionsNames">The names of the options the requirement is about, short or long</param>
     public abstract class OptionRequirementBase(
         IReadOnlyCollection<string> optionsNames)
     {
         // Properties.
+        /// <summary>
+        /// The names of the options the requirement is about, short or long.
+        /// </summary>
         public IReadOnlyCollection<string> OptionsNames { get; protected set; } = optionsNames;
 
         // Methods.
+        /// <summary>
+        /// Compose the line describing the requirement in the help.
+        /// </summary>
+        /// <param name="commandOptions">The options the requirement belongs to</param>
+        /// <returns>The help line</returns>
         public abstract string PrintHelpLine(
             CommandOptionsBase commandOptions);
         
+        /// <summary>
+        /// Verify the requirement on the options found in the args.
+        /// </summary>
+        /// <param name="commandOptions">The options the requirement belongs to</param>
+        /// <param name="parsedOptions">The options found in the args</param>
+        /// <returns>The violations of the requirement, none when it is satisfied</returns>
         public abstract IEnumerable<OptionRequirementError> ValidateOptions(
             CommandOptionsBase commandOptions,
             IEnumerable<ParsedOption> parsedOptions);
         
         // Protected helpers.
+        /// <summary>
+        /// Find an option found in the args by its short or long name.
+        /// </summary>
+        /// <param name="parsedOptions">The options found in the args</param>
+        /// <param name="optionName">The short or long name of the option</param>
+        /// <param name="foundParsedOption">The parsed option, or null when it is not found</param>
+        /// <returns>Whether the option is found</returns>
         protected static bool TryFindParsedOption(
             IEnumerable<ParsedOption> parsedOptions,
             string optionName,
@@ -40,7 +66,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
             foundParsedOption = parsedOptions.SingleOrDefault(parsOpt =>
                 parsOpt.Option.ShortName == optionName ||
                 parsOpt.Option.LongName == optionName);
-            return foundParsedOption != null;
+            return foundParsedOption is not null;
         }
     }
 }

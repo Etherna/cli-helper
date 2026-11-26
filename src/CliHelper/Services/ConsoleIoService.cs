@@ -16,18 +16,25 @@ using System;
 
 namespace Etherna.CliHelper.Services
 {
+    /// <summary>
+    /// The <see cref="IIoService"/> on the system console. Errors are written to the standard output, in dark red.
+    /// </summary>
     public class ConsoleIoService : IIoService
     {
         // Consts.
         private const ConsoleColor ErrorForegroundColor = ConsoleColor.DarkRed;
         
         // Methods.
+        /// <inheritdoc />
         public ConsoleKeyInfo ReadKey() => Console.ReadKey();
 
+        /// <inheritdoc />
         public string? ReadLine() => Console.ReadLine();
 
+        /// <inheritdoc />
         public void Write(string? value) => Console.Write(value);
         
+        /// <inheritdoc />
         public void WriteError(string value)
         {
             Console.ForegroundColor = ErrorForegroundColor;
@@ -35,6 +42,7 @@ namespace Etherna.CliHelper.Services
             Console.ResetColor();
         }
 
+        /// <inheritdoc />
         public void WriteErrorLine(string value)
         {
             Console.ForegroundColor = ErrorForegroundColor;
@@ -42,6 +50,7 @@ namespace Etherna.CliHelper.Services
             Console.ResetColor();
         }
 
+        /// <inheritdoc />
         public void WriteLine(string? value = null) => Console.WriteLine(value);
     }
 }

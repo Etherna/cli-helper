@@ -18,19 +18,26 @@ using System.Linq;
 
 namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
+    /// <summary>
+    /// Requires the arg of an option to be a number not greater than a max value.
+    /// </summary>
+    /// <param name="optionsName">The name of the option, short or long</param>
+    /// <param name="maxValue">The max value, included</param>
     public class MaxValueOptionRequirement(
         string optionsName,
         double maxValue)
         : OptionRequirementBase([optionsName])
     {
         // Methods.
+        /// <inheritdoc />
         public override string PrintHelpLine(CommandOptionsBase commandOptions)
         {
-            ArgumentNullException.ThrowIfNull(commandOptions, nameof(commandOptions));
+            ArgumentNullException.ThrowIfNull(commandOptions);
 
             return ComposeSentence(commandOptions.FindOptionByName(OptionsNames.First()).LongName);
         }
 
+        /// <inheritdoc />
         public override IEnumerable<OptionRequirementError> ValidateOptions(
             CommandOptionsBase commandOptions,
             IEnumerable<ParsedOption> parsedOptions)
@@ -45,11 +52,11 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
                     $"Invalid argument value: {parsedOption.ParsedName} {parsedOption.ParsedArgs.First()}")];
 
             return doubleArg <= maxValue
-                ? Array.Empty<OptionRequirementError>()
+                ? []
                 : [new OptionRequirementError(ComposeSentence(parsedOption.ParsedName))];
         }
 
-        // Private helpers.
+        // Helpers.
         private string ComposeSentence(string optName) => $"{optName} has max value {maxValue}.";
     }
 }
