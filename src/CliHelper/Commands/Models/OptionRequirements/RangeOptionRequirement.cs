@@ -18,9 +18,19 @@ using System.Linq;
 
 namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
+    /// <summary>
+    /// Requires the arg of an option to be a number in a range, bounds included.
+    /// </summary>
     public class RangeOptionRequirement : OptionRequirementBase
     {
         // Constructor.
+        /// <summary>
+        /// Require the arg of an option to be a number in a range, bounds included.
+        /// </summary>
+        /// <param name="optionsName">The name of the option, short or long</param>
+        /// <param name="minValue">The min value, included</param>
+        /// <param name="maxValue">The max value, included</param>
+        /// <exception cref="ArgumentException">The min value is not lower than the max value</exception>
         public RangeOptionRequirement(string optionsName,
             double minValue,
             double maxValue) : base([optionsName])
@@ -33,10 +43,17 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
         }
 
         // Properties.
+        /// <summary>
+        /// The max value, included.
+        /// </summary>
         public double MaxValue { get; }
+        /// <summary>
+        /// The min value, included.
+        /// </summary>
         public double MinValue { get; }
 
         // Methods.
+        /// <inheritdoc />
         public override string PrintHelpLine(CommandOptionsBase commandOptions)
         {
             ArgumentNullException.ThrowIfNull(commandOptions);
@@ -44,6 +61,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
             return ComposeSentence(commandOptions.FindOptionByName(OptionsNames.First()).LongName);
         }
 
+        /// <inheritdoc />
         public override IEnumerable<OptionRequirementError> ValidateOptions(
             CommandOptionsBase commandOptions,
             IEnumerable<ParsedOption> parsedOptions)

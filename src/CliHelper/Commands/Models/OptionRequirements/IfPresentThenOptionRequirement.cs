@@ -18,12 +18,18 @@ using System.Linq;
 
 namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
+    /// <summary>
+    /// Verifies another requirement when an option is present.
+    /// </summary>
+    /// <param name="optionsName">The name of the option, short or long</param>
+    /// <param name="thenRequirement">The requirement verified when the option is present</param>
     public class IfPresentThenOptionRequirement(
         string optionsName,
         OptionRequirementBase thenRequirement)
         : OptionRequirementBase([optionsName])
     {
         // Methods.
+        /// <inheritdoc />
         public override string PrintHelpLine(CommandOptionsBase commandOptions)
         {
             ArgumentNullException.ThrowIfNull(commandOptions);
@@ -33,6 +39,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
                 thenRequirement.PrintHelpLine(commandOptions));
         }
 
+        /// <inheritdoc />
         public override IEnumerable<OptionRequirementError> ValidateOptions(CommandOptionsBase commandOptions, IEnumerable<ParsedOption> parsedOptions)
         {
             var optName = OptionsNames.First();

@@ -18,12 +18,18 @@ using System.Linq;
 
 namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
+    /// <summary>
+    /// Requires the arg of an option to be a number not greater than a max value.
+    /// </summary>
+    /// <param name="optionsName">The name of the option, short or long</param>
+    /// <param name="maxValue">The max value, included</param>
     public class MaxValueOptionRequirement(
         string optionsName,
         double maxValue)
         : OptionRequirementBase([optionsName])
     {
         // Methods.
+        /// <inheritdoc />
         public override string PrintHelpLine(CommandOptionsBase commandOptions)
         {
             ArgumentNullException.ThrowIfNull(commandOptions);
@@ -31,6 +37,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
             return ComposeSentence(commandOptions.FindOptionByName(OptionsNames.First()).LongName);
         }
 
+        /// <inheritdoc />
         public override IEnumerable<OptionRequirementError> ValidateOptions(
             CommandOptionsBase commandOptions,
             IEnumerable<ParsedOption> parsedOptions)

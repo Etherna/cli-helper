@@ -19,8 +19,18 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Etherna.CliHelper
 {
+    /// <summary>
+    /// Extensions registering CliHelper on a service collection.
+    /// </summary>
     public static class ServiceCollectionExtensions
     {
+        /// <summary>
+        /// Register the command manager, with the io service the commands read and write through.
+        /// The commands are added on the returned configuration.
+        /// </summary>
+        /// <typeparam name="TIoService">The io service implementation, like <see cref="ConsoleIoService"/></typeparam>
+        /// <param name="services">The service collection</param>
+        /// <returns>The configuration to add the root commands on</returns>
         public static ICommandManagerConfiguration AddCliHelper<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]TIoService>(
             this IServiceCollection services)

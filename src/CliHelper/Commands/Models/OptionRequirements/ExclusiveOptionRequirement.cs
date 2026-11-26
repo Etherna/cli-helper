@@ -17,13 +17,19 @@ using System.Linq;
 
 namespace Etherna.CliHelper.Commands.Models.OptionRequirements
 {
+    /// <summary>
+    /// Requires at most one of the options.
+    /// </summary>
+    /// <param name="optionsNames">The names of the mutually exclusive options, short or long</param>
     public class ExclusiveOptionRequirement(params string[] optionsNames)
         : OptionRequirementBase(optionsNames)
     {
         // Methods.
+        /// <inheritdoc />
         public override string PrintHelpLine(CommandOptionsBase commandOptions) =>
             ComposeSentence(OptionsNames.Select(n => commandOptions.FindOptionByName(n).LongName));
 
+        /// <inheritdoc />
         public override IEnumerable<OptionRequirementError> ValidateOptions(
             CommandOptionsBase commandOptions,
             IEnumerable<ParsedOption> parsedOptions)

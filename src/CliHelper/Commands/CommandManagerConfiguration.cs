@@ -20,6 +20,10 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Etherna.CliHelper.Commands
 {
+    /// <summary>
+    /// The configuration of the root commands, registering every command of the tree on the service collection.
+    /// </summary>
+    /// <param name="services">The service collection to register the commands on</param>
     public class CommandManagerConfiguration(IServiceCollection services)
         : ICommandManagerConfiguration
     {
@@ -27,9 +31,18 @@ namespace Etherna.CliHelper.Commands
         private readonly Dictionary<Type, CommandMap> _allCommandMaps = [];
         
         // Properties.
+        /// <summary>
+        /// The maps of every command of the tree, root and sub commands, by command type.
+        /// </summary>
         public IReadOnlyDictionary<Type, CommandMap> AllCommandMaps => _allCommandMaps;
         
         // Methods.
+        /// <summary>
+        /// Add a root command, with its sub commands.
+        /// </summary>
+        /// <typeparam name="TCommand">The command type</typeparam>
+        /// <param name="configSubCommands">Adds the sub commands of the command, on its own configuration</param>
+        /// <returns>This configuration, to add more root commands</returns>
         public ICommandManagerConfiguration AddCommand<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TCommand>(
             Action<ICommandManagerConfiguration>? configSubCommands = null)
