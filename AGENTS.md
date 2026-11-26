@@ -66,7 +66,7 @@ Bugs and features are tracked in Jira project **CLIH** (https://etherna.atlassia
 ## General Principles
 
 - Keep commits clean: only include changes strictly necessary for the task at hand.
-- A security fix keeps its commit message and PR title neutral: the Jira key and what changes, never the vulnerability. The write-up stays in the Jira work item, hidden until the fixed version is released.
+- A security fix keeps its commit message and PR title neutral: the Jira key and what changes, never the vulnerability. The write-up stays in the Jira work item, hidden until the fixed version is released; outside reporters are directed to [SECURITY.md](SECURITY.md).
 - Keep `README.md` aligned: it is packed as the readme of the package, so a change to features, packages or build steps updates it in the same change.
 - Never reference AI agents or assistants in commits or code — no agent names, no `Co-Authored-By` agent trailers, no "generated/assisted by" notes. Commit messages and code must read as the team's own work.
 - Exceptions to these conventions are accepted when strictly necessary or when they significantly improve code quality. Justify with a comment where needed.
