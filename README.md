@@ -26,5 +26,6 @@ For questions or problems please write an email to [info@etherna.io](mailto:info
 
 ![LGPL Logo](https://www.gnu.org/graphics/lgplv3-with-text-154x68.png)
 
-We use the GNU Lesser General Public License v3 (LGPL-3.0) for this project.
+We use the GNU Lesser General Public License v3 or later (SPDX `LGPL-3.0-or-later`) for this project:
+[COPYING.LESSER](https://github.com/Etherna/cli-helper/blob/main/COPYING.LESSER) adds the lesser terms to the GNU GPL v3 of [COPYING](https://github.com/Etherna/cli-helper/blob/main/COPYING).
 If you require a custom license, you can contact us at [license@etherna.io](mailto:license@etherna.io).
