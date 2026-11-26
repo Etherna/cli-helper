@@ -28,6 +28,7 @@ namespace Etherna.CliHelper.Commands.Models
     {
         // Fields.
         private ICommandManager _commandManager = null!;
+        private CommandBase? resolvedSubCommand;
 
         // Properties.
         public required ICommandManager CommandManager
@@ -35,30 +36,20 @@ namespace Etherna.CliHelper.Commands.Models
             get => _commandManager;
             set => _commandManager = value;
         }
-        public string CommandPathNames => string.Join(' ',
-            CommandPathTypes.Select(cType => CommandManager.CreateCommand(cType).Name));
+        public string CommandPathNames => string.Join(' ', CommandPathTypes.Select(GetCommandNameFromType));
         public IEnumerable<Type> CommandPathTypes => CommandManager.GetCommandPathTypes(GetType());
         public virtual string CommandArgsHelpString => HasSubCommands ? "COMMAND" : "";
         public string CommandPathUsageHelpString
         {
             get
             {
-                var strBuilder = new StringBuilder();
-                foreach (var commandType in CommandPathTypes)
-                {
-                    var command = CommandManager.CreateCommand(commandType);
-                    strBuilder.Append(command.Name);
-                    if (command.HasOptions)
-                    {
-                        strBuilder.Append(command.HasRequiredOptions ?
-                            $" {command.Name.ToUpperInvariant()}_OPTIONS" :    
-                            $" [{command.Name.ToUpperInvariant()}_OPTIONS]");
-                    }
-
-                    strBuilder.Append(' ');
-                }
-                strBuilder.Append(CommandArgsHelpString);
-                return strBuilder.ToString();
+                var pathCommands = CommandPathTypes.Select(CommandManager.CreateCommand).ToArray();
+                var usageParts = new List<string> { CommandPathNames };
+                if (pathCommands.Any(c => c.HasOptions))
+                    usageParts.Add(pathCommands.Any(c => c.HasRequiredOptions) ? "OPTIONS" : "[OPTIONS]");
+                if (CommandArgsHelpString.Length != 0)
+                    usageParts.Add(CommandArgsHelpString);
+                return string.Join(' ', usageParts);
             }
         }
         public abstract string Description { get; }
@@ -72,55 +63,101 @@ namespace Etherna.CliHelper.Commands.Models
         
         // Protected properties.
         protected IIoService IoService => CommandManager.IoService;
+        
+        // Internal properties.
+        internal virtual CommandOptionsBase? CommandOptions => null;
 
         // Public methods.
+        /// <summary>
+        /// Run the command. Args hold the sub commands to run, followed by the command args. The options of every
+        /// command of the path can be anywhere after the command defining them, and before the command args.
+        /// The options of the whole path are parsed and verified before any command is executed.
+        /// </summary>
+        /// <param name="args">Input args</param>
         public async Task RunAsync(string[] args)
         {
-            // Parse arguments.
-            var printHelp = EvaluatePrintHelp(args);
-            var optionArgsCount = printHelp ? 0 : ParseOptionArgs(args);
+            ArgumentNullException.ThrowIfNull(args);
             
-            // Print help or run command.
-            if (printHelp)
-                PrintHelp();
-            else
-                await ExecuteAsync(args[optionArgsCount..]).ConfigureAwait(false);
+            // Resolve the commands path, and parse the options of all its commands.
+            var optionsParser = new OptionsParser();
+            AddCommandOptions(optionsParser, this);
+            var leafCommand = this;
+            var leafArgsIndex = 0;
+            var argsIndex = 0;
+            while (argsIndex < args.Length)
+            {
+                var arg = args[argsIndex];
+                
+                // Option, or help request.
+                if (arg.StartsWith('-'))
+                {
+                    if (arg is "-h" or "--help" && !optionsParser.IsDefined(arg))
+                    {
+                        leafCommand.PrintHelp();
+                        return;
+                    }
+                    
+                    argsIndex = optionsParser.ParseOption(args, argsIndex);
+                    continue;
+                }
+                
+                // Sub command, or begin of command args.
+                var subCommandType = leafCommand.SubCommandTypes.FirstOrDefault(t => GetCommandNameFromType(t) == arg);
+                if (subCommandType is null)
+                    break;
+
+                var subCommand = CommandManager.CreateCommand(subCommandType);
+                AddCommandOptions(optionsParser, subCommand);
+                leafCommand.resolvedSubCommand = subCommand;
+                leafCommand = subCommand;
+                leafArgsIndex = ++argsIndex;
+            }
+            
+            // Print help when nothing follows the leaf command.
+            if (leafArgsIndex == args.Length && leafCommand.PrintHelpWithNoArgs)
+            {
+                leafCommand.PrintHelp();
+                return;
+            }
+            
+            // Verify option requirements of the whole path, and execute it.
+            optionsParser.ValidateRequirements(IoService);
+            await ExecuteAsync(args[argsIndex..]).ConfigureAwait(false);
         }
         
         // Protected methods.
-        protected virtual void AppendOptionsHelp(StringBuilder strBuilder) { }
+        protected virtual void AppendOptionsHelp(StringBuilder strBuilder)
+        {
+            ArgumentNullException.ThrowIfNull(strBuilder);
+            
+            if (CommandOptions is not null)
+                AppendOptionDefinitionsHelp(strBuilder, "Options:", CommandOptions);
+        }
         
         /// <summary>
-        /// Parse command options
+        /// Execute the command, after its path has been resolved and the options parsed
         /// </summary>
-        /// <param name="args">Input args</param>
-        /// <returns>Found option args counter</returns>
-        protected virtual int ParseOptionArgs(string[] args) => 0;
-        
+        /// <param name="commandArgs">The args following the commands path, and its options</param>
         protected virtual async Task ExecuteAsync(string[] commandArgs)
         {
-            ArgumentNullException.ThrowIfNull(commandArgs, nameof(commandArgs));
+            ArgumentNullException.ThrowIfNull(commandArgs);
             await ExecuteSubCommandAsync(commandArgs).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Execute the sub command resolved from the args
+        /// </summary>
+        /// <param name="commandArgs">The args following the commands path, and its options</param>
         protected async Task ExecuteSubCommandAsync(string[] commandArgs)
         {
-            ArgumentNullException.ThrowIfNull(commandArgs, nameof(commandArgs));
+            ArgumentNullException.ThrowIfNull(commandArgs);
 
-            if (commandArgs.Length == 0)
-                throw new ArgumentException("A command name is required");
-            
-            var subCommandName = commandArgs[0];
-            var subCommandArgs = commandArgs[1..];
+            if (resolvedSubCommand is null)
+                throw new ArgumentException(commandArgs.Length == 0 ?
+                    "A command name is required" :
+                    $"{CommandPathNames}: '{commandArgs[0]}' is not a valid command.");
 
-            var selectedCommandType = SubCommandTypes.FirstOrDefault(
-                t => GetCommandNameFromType(t) == subCommandName);
-            
-            if (selectedCommandType is null)
-                throw new ArgumentException($"{CommandPathNames}: '{subCommandName}' is not a valid command.");
-
-            var selectedCommand = CommandManager.CreateCommand(selectedCommandType);
-            await selectedCommand.RunAsync(subCommandArgs).ConfigureAwait(false);
+            await resolvedSubCommand.ExecuteAsync(commandArgs).ConfigureAwait(false);
         }
         
         // Protected helpers.
@@ -135,24 +172,44 @@ namespace Etherna.CliHelper.Commands.Models
         }
         
         // Helpers.
-        private bool EvaluatePrintHelp(string[] args)
+        private static void AddCommandOptions(OptionsParser optionsParser, CommandBase command)
         {
-            ArgumentNullException.ThrowIfNull(args, nameof(args));
+            if (command.CommandOptions is not null)
+                optionsParser.AddOptions(command.CommandOptions, command.CommandPathNames);
+        }
+        
+        private static void AppendOptionDefinitionsHelp(
+            StringBuilder strBuilder,
+            string header,
+            CommandOptionsBase options)
+        {
+            var definitions = options.Definitions.ToArray();
+            if (definitions.Length == 0) return;
             
-            switch (args.Length)
+            strBuilder.AppendLine(header);
+            var descriptionShift = definitions.Select(opt =>
             {
-                case 0 when PrintHelpWithNoArgs:
-                    return true;
-                case 1:
-                    switch (args[0])
-                    {
-                        case "-h":
-                        case "--help":
-                            return true;
-                    }
-                    break;
+                var len = opt.LongName.Length;
+                foreach (var reqArgType in opt.RequiredArgTypes)
+                    len += reqArgType.Name.Length + 1;
+                return len;
+            }).Max() + 4;
+            foreach (var option in definitions)
+            {
+                strBuilder.Append("  ");
+                strBuilder.Append(option.ShortName is null ? "    " : $"{option.ShortName}, ");
+                strBuilder.Append(option.LongName);
+                var strLen = option.LongName.Length;
+                foreach (var reqArgType in option.RequiredArgTypes)
+                {
+                    strBuilder.Append($" {reqArgType.Name.ToLower(CultureInfo.InvariantCulture)}");
+                    strLen += reqArgType.Name.Length + 1;
+                }
+                for (int i = 0; i < descriptionShift - strLen; i++)
+                    strBuilder.Append(' ');
+                strBuilder.AppendLine(option.Description);
             }
-            return false;
+            strBuilder.AppendLine();
         }
 
         [SuppressMessage("Performance", "CA1851:Possible multiple enumerations of \'IEnumerable\' collection")]
@@ -187,8 +244,29 @@ namespace Etherna.CliHelper.Commands.Models
                 strBuilder.AppendLine();
             }
         
-            // Add options.
+            // Add options, own first, then inherited from the nearest ancestor.
             AppendOptionsHelp(strBuilder);
+            var ancestorCommands = CommandPathTypes.Reverse().Skip(1).Select(CommandManager.CreateCommand).ToArray();
+            foreach (var ancestorCommand in ancestorCommands)
+                if (ancestorCommand.CommandOptions is not null)
+                    AppendOptionDefinitionsHelp(
+                        strBuilder,
+                        $"Options of {ancestorCommand.CommandPathNames}:",
+                        ancestorCommand.CommandOptions);
+            
+            // Add option requirements.
+            var requirementHelpLines = ancestorCommands.Prepend(this)
+                .Select(c => c.CommandOptions)
+                .OfType<CommandOptionsBase>()
+                .SelectMany(options => options.Requirements.Select(r => r.PrintHelpLine(options)))
+                .ToArray();
+            if (requirementHelpLines.Length != 0)
+            {
+                strBuilder.AppendLine("Option requirements:");
+                foreach (var requirementHelpLine in requirementHelpLines)
+                    strBuilder.AppendLine("  " + requirementHelpLine);
+                strBuilder.AppendLine();
+            }
         
             // Add print help.
             strBuilder.AppendLine($"Run '{CommandPathNames} -h' or '{CommandPathNames} --help' to print help.");
@@ -202,7 +280,6 @@ namespace Etherna.CliHelper.Commands.Models
         }
     }
     
-    [SuppressMessage("Globalization", "CA1305:Specify IFormatProvider")]
     public abstract class CommandBase<TOptions> : CommandBase
         where TOptions : CommandOptionsBase, new()
     {
@@ -211,49 +288,7 @@ namespace Etherna.CliHelper.Commands.Models
         public override bool HasRequiredOptions => Options.AreRequired;
         public TOptions Options { get; } = new();
         
-        // Methods.
-        protected override int ParseOptionArgs(string[] args) => Options.ParseArgs(args, IoService);
-
-        protected override void AppendOptionsHelp(StringBuilder strBuilder)
-        {
-            ArgumentNullException.ThrowIfNull(strBuilder, nameof(strBuilder));
-
-            if (!Options.Definitions.Any()) return;
-            
-            // Option descriptions.
-            strBuilder.AppendLine("Options:");
-            var descriptionShift = Options.Definitions.Select(opt =>
-            {
-                var len = opt.LongName.Length;
-                foreach (var reqArgType in opt.RequiredArgTypes)
-                    len += reqArgType.Name.Length + 1;
-                return len;
-            }).Max() + 4;
-            foreach (var option in Options.Definitions)
-            {
-                strBuilder.Append("  ");
-                strBuilder.Append(option.ShortName is null ? "    " : $"{option.ShortName}, ");
-                strBuilder.Append(option.LongName);
-                var strLen = option.LongName.Length;
-                foreach (var reqArgType in option.RequiredArgTypes)
-                {
-                    strBuilder.Append($" {reqArgType.Name.ToLower(CultureInfo.InvariantCulture)}");
-                    strLen += reqArgType.Name.Length + 1;
-                }
-                for (int i = 0; i < descriptionShift - strLen; i++)
-                    strBuilder.Append(' ');
-                strBuilder.AppendLine(option.Description);
-            }
-            strBuilder.AppendLine();
-                
-            // Requirements.
-            if (Options.Requirements.Any())
-            {
-                strBuilder.AppendLine("Option requirements:");
-                foreach (var requirement in Options.Requirements)
-                    strBuilder.AppendLine("  " + requirement.PrintHelpLine(Options));
-                strBuilder.AppendLine();
-            }
-        }
+        // Internal properties.
+        internal override CommandOptionsBase CommandOptions => Options;
     }
 }

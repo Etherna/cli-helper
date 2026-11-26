@@ -72,7 +72,7 @@ namespace Etherna.CliHelper.AotCompatibility
             var (io, exception) = await RunAsync("greet", "--help").ConfigureAwait(false);
             ThrowIfFailed(exception);
 
-            Require(io.Output, "Usage:  root greet GREET_OPTIONS");
+            Require(io.Output, "Usage:  root greet OPTIONS");
             Require(io.Output, "-n, --name string");
             Require(io.Output, "    --times int32");
             Require(io.Output, "--name is required.");
