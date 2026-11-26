@@ -4,7 +4,7 @@ Cli Helper is a **.NET library** to build command line applications: a tree of c
 
 ## Build, run, test
 
-The library multi-targets **net8.0 and net9.0**; the test and AOT probe projects target **net10.0 only**. There is no `Directory.Build.props`: every `.csproj` carries its own property block. The library sets `TreatWarningsAsErrors=true`, `AnalysisMode=AllEnabledByDefault`, `Nullable=enable`, `EnableNETAnalyzers=true` and `IsAotCompatible=true` — warnings break the build, on every target framework.
+The library multi-targets **net8.0, net9.0 and net10.0**; the test and AOT probe projects target **net10.0 only**. There is no `Directory.Build.props`: every `.csproj` carries its own property block. The library sets `TreatWarningsAsErrors=true`, `AnalysisMode=AllEnabledByDefault`, `Nullable=enable`, `EnableNETAnalyzers=true` and `IsAotCompatible=true` — warnings break the build, on every target framework.
 
 ```bash
 dotnet restore CliHelper.sln
@@ -16,7 +16,7 @@ dotnet publish test/CliHelper.AotCompatibility/CliHelper.AotCompatibility.csproj
 ./test/CliHelper.AotCompatibility/bin/Release/net10.0/linux-x64/publish/CliHelper.AotCompatibility       # then run the probe
 ```
 
-Because the library compiles against the lowest target (`net8.0`), do not use APIs introduced only in a later framework — it passes on `net9.0` and fails the build on `net8.0`. A green `CliHelper.sln` build means every target compiled.
+Because the library compiles against the lowest target (`net8.0`), do not use APIs introduced only in a later framework — it passes on the later targets and fails the build on `net8.0`. A green `CliHelper.sln` build means every target compiled.
 
 The library is **Native AOT / trim compatible** (`IsAotCompatible=true`). A normal build does not prove it: the gate is the AOT publish of `test/CliHelper.AotCompatibility`, which roots the whole library (`TrimmerRootAssembly`) and fails on any trim/AOT warning, followed by its native binary, a smoke test of the paths that run by reflection. Run both after touching how commands or the io service are created, or after adding a dependency.
 
