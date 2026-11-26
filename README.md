@@ -16,6 +16,8 @@ If you've discovered a bug, or have an idea for a new feature, please report it 
 
 Detailed reports with stack traces, actual and expected behaviours are welcome.
 
+For a security problem, don't open a public issue: follow the [security policy](https://github.com/Etherna/cli-helper/security/policy) to report it privately.
+
 ## Questions? Problems?
 
 For questions or problems please write an email to [info@etherna.io](mailto:info@etherna.io).
