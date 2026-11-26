@@ -54,6 +54,7 @@ Key cross-cutting points:
 - **This is a library: always `ConfigureAwait(false)`** on every await (`CA2007` is enforced by the analyzers). This is the opposite of the Etherna ASP.NET Core service repos (beehive, credit, gateway, index, sso), where `ConfigureAwait` is omitted.
 - **Public API surface is the product.** The package is published to NuGet and consumed by the Etherna command line tools: keep the public surface intentional, document it with XML docs, and remember both target frameworks must compile. A breaking change is stated in the PR.
 - **Native AOT / trim compatible**: commands and the io service are built by reflection over their constructors, so every generic parameter (or `Type`) that reaches `ActivatorUtilities` carries `[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]`, as on `AddCliHelper` and `AddCommand`. Extend the checks of the probe when a change touches a path that runs by reflection.
+- **The license is GNU LGPL v3 or later**, stated by the `COPYING` + `COPYING.LESSER` text pair the GitHub detector reads as LGPL-3.0 (it recognises the lesser terms by that exact file name), and declared to the package registries by the `PackageLicenseExpression` of the `.csproj`: `LGPL-3.0-or-later`, the SPDX form of the source header wording, mutually exclusive with `PackageLicenseFile`, which the project doesn't set (NuGet accepts a single license file anyway, and a file carries no machine readable identifier). Both texts are packed as package content.
 
 ## Issue tracker
 
@@ -74,7 +75,7 @@ Bugs and features are tracked in Jira project **CLIH** (https://etherna.atlassia
 - Primary constructors are preferred everywhere the constructor is a simple parameter assignment.
 - Keep code clean: remove unused variables, dead code, and redundant imports.
 - Don't extract a private helper method for logic used in a single place — inline it. Reserve helpers for code shared by two or more call sites (or when extraction materially clarifies an otherwise long, complex method).
-- Every source file starts with the standard LGPL-3.0 copyright header (`// Copyright 2024-present Etherna SA`, `// This file is part of Cli Helper.` … see any existing file; `CliHelper.sln.DotSettings` holds it for the IDE). The license texts `COPYING` and `COPYING-LESSER` are packed with the package.
+- Every source file starts with the standard LGPL-3.0 copyright header (`// Copyright 2024-present Etherna SA`, `// This file is part of Cli Helper.` … see any existing file; `CliHelper.sln.DotSettings` holds it for the IDE).
 
 ## Naming
 
