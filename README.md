@@ -8,7 +8,7 @@ A library to help build CLI applications
 
 You can get latest public releases from Nuget.org feed. Here you can see our [published packages](https://www.nuget.org/profiles/etherna).
 
-If you'd like to work with latest internal releases, you can use our [custom feed](https://www.myget.org/F/etherna/api/v3/index.json) (NuGet V3) based on MyGet.
+If you'd like to work with latest internal releases, you can use our [Etherna NuGet feed](https://nuget.etherna.io/v3/index.json) (NuGet V3).
 
 ## Issue reports
 
