@@ -12,7 +12,6 @@
 // You should have received a copy of the GNU Lesser General Public License along with Cli Helper.
 // If not, see <https://www.gnu.org/licenses/>.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -21,6 +20,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
     public class RequireOneOfOptionRequirement(params string[] optionsNames)
         : OptionRequirementBase(optionsNames)
     {
+        // Methods.
         public override string PrintHelpLine(CommandOptionsBase commandOptions) =>
             string.Join(", ", OptionsNames.Select(n => commandOptions.FindOptionByName(n).LongName)) +
             (OptionsNames.Count == 1 ? " is required." : " at least one is required.");
@@ -29,7 +29,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
             CommandOptionsBase commandOptions,
             IEnumerable<ParsedOption> parsedOptions) =>
             OptionsNames.Any(optName => TryFindParsedOption(parsedOptions, optName, out _)) ?
-                Array.Empty<OptionRequirementError>() :
+                [] :
                 [new OptionRequirementError(PrintHelpLine(commandOptions))];
     }
 }

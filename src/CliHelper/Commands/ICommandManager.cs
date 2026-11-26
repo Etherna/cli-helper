@@ -30,9 +30,9 @@ namespace Etherna.CliHelper.Commands
 
         CommandBase CreateCommand(Type commandType);
 
-        IEnumerable<Type> GetCommandSubTypes(Type commandType);
-
         IEnumerable<Type> GetCommandPathTypes(Type commandType);
+
+        IEnumerable<Type> GetCommandSubTypes(Type commandType);
 
         Type? TryGetParentCommand(Type commandType);
     }

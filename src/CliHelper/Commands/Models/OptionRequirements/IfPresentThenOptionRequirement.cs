@@ -26,29 +26,28 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
         // Methods.
         public override string PrintHelpLine(CommandOptionsBase commandOptions)
         {
-            ArgumentNullException.ThrowIfNull(commandOptions, nameof(commandOptions));
+            ArgumentNullException.ThrowIfNull(commandOptions);
             
             return ComposeSentence(
                 commandOptions.FindOptionByName(OptionsNames.First()).LongName,
-                thenRequirement.PrintHelpLine(commandOptions),
-                commandOptions);
+                thenRequirement.PrintHelpLine(commandOptions));
         }
 
         public override IEnumerable<OptionRequirementError> ValidateOptions(CommandOptionsBase commandOptions, IEnumerable<ParsedOption> parsedOptions)
         {
             var optName = OptionsNames.First();
             
-            if (!TryFindParsedOption(parsedOptions, optName, out var parsedOption))
+            if (!TryFindParsedOption(parsedOptions, optName, out _))
                 return [];
 
             var thenErrors = thenRequirement.ValidateOptions(commandOptions, parsedOptions);
 
             return thenErrors.Select(thenError =>
-                new OptionRequirementError(ComposeSentence(optName, thenError.Message, commandOptions)));
+                new OptionRequirementError(ComposeSentence(optName, thenError.Message)));
         }
-        
-        // Private helpers.
-        private static string ComposeSentence(string optName, string thenMessageLine, CommandOptionsBase commandOptions) =>
+
+        // Helpers.
+        private static string ComposeSentence(string optName, string thenMessageLine) =>
             $"If {optName} is present then {thenMessageLine}";
     }
 }

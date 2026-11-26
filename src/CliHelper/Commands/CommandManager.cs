@@ -37,7 +37,7 @@ namespace Etherna.CliHelper.Commands
 
         public CommandBase CreateCommand(Type commandType)
         {
-            ArgumentNullException.ThrowIfNull(commandType, nameof(commandType));
+            ArgumentNullException.ThrowIfNull(commandType);
             
             if (!config.AllCommandMaps.ContainsKey(commandType))
                 throw new InvalidOperationException($"Unregistered command type {commandType.Name}");
@@ -45,22 +45,22 @@ namespace Etherna.CliHelper.Commands
             return (CommandBase)serviceProvider.GetRequiredService(commandType);
         }
         
-        public IEnumerable<Type> GetCommandSubTypes(Type commandType) =>
-            config.AllCommandMaps[commandType].SubCommandMaps.Select(m => m.CommandType);
-
         public IEnumerable<Type> GetCommandPathTypes(Type commandType)
         {
-            ArgumentNullException.ThrowIfNull(commandType, nameof(commandType));
-            
-            var commandPathTypes = new List<Type>();
+            ArgumentNullException.ThrowIfNull(commandType);
+
+            List<Type> commandPathTypes = [];
             var currentCommandType = commandType;
-            while (currentCommandType != null)
+            while (currentCommandType is not null)
             {
                 commandPathTypes.Insert(0, currentCommandType);
                 currentCommandType = TryGetParentCommand(currentCommandType);
             }
             return commandPathTypes;
         }
+
+        public IEnumerable<Type> GetCommandSubTypes(Type commandType) =>
+            config.AllCommandMaps[commandType].SubCommandMaps.Select(m => m.CommandType);
 
         public Type? TryGetParentCommand(Type commandType) =>
             config.AllCommandMaps[commandType].ParentCommandMap?.CommandType;

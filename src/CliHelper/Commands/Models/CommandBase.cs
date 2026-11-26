@@ -31,6 +31,7 @@ namespace Etherna.CliHelper.Commands.Models
         private CommandBase? resolvedSubCommand;
 
         // Properties.
+        public virtual string CommandArgsHelpString => HasSubCommands ? "COMMAND" : "";
         public required ICommandManager CommandManager
         {
             get => _commandManager;
@@ -38,13 +39,12 @@ namespace Etherna.CliHelper.Commands.Models
         }
         public string CommandPathNames => string.Join(' ', CommandPathTypes.Select(GetCommandNameFromType));
         public IEnumerable<Type> CommandPathTypes => CommandManager.GetCommandPathTypes(GetType());
-        public virtual string CommandArgsHelpString => HasSubCommands ? "COMMAND" : "";
         public string CommandPathUsageHelpString
         {
             get
             {
                 var pathCommands = CommandPathTypes.Select(CommandManager.CreateCommand).ToArray();
-                var usageParts = new List<string> { CommandPathNames };
+                List<string> usageParts = [CommandPathNames];
                 if (pathCommands.Any(c => c.HasOptions))
                     usageParts.Add(pathCommands.Any(c => c.HasRequiredOptions) ? "OPTIONS" : "[OPTIONS]");
                 if (CommandArgsHelpString.Length != 0)
@@ -67,7 +67,7 @@ namespace Etherna.CliHelper.Commands.Models
         // Internal properties.
         internal virtual CommandOptionsBase? CommandOptions => null;
 
-        // Public methods.
+        // Methods.
         /// <summary>
         /// Run the command. Args hold the sub commands to run, followed by the command args. The options of every
         /// command of the path can be anywhere after the command defining them, and before the command args.
@@ -163,7 +163,7 @@ namespace Etherna.CliHelper.Commands.Models
         // Protected helpers.
         protected static string GetCommandNameFromType(Type commandType)
         {
-            ArgumentNullException.ThrowIfNull(commandType, nameof(commandType));
+            ArgumentNullException.ThrowIfNull(commandType);
             
             if (!typeof(CommandBase).IsAssignableFrom(commandType))
                 throw new ArgumentException($"{commandType.Name} is not a command type");

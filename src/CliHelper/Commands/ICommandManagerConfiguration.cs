@@ -20,7 +20,8 @@ namespace Etherna.CliHelper.Commands
 {
     public interface ICommandManagerConfiguration
     {
-        public ICommandManagerConfiguration AddCommand<
+        // Methods.
+        ICommandManagerConfiguration AddCommand<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TCommand>(
             Action<ICommandManagerConfiguration>? configSubCommands = null)
             where TCommand : CommandBase;

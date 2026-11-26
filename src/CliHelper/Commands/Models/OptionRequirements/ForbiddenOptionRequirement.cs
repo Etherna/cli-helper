@@ -12,7 +12,6 @@
 // You should have received a copy of the GNU Lesser General Public License along with Cli Helper.
 // If not, see <https://www.gnu.org/licenses/>.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -41,7 +40,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
             return [];
         }
         
-        // Private helpers.
+        // Helpers.
         private static string ComposeSentence(IEnumerable<string> optNames) =>
             string.Join(", ", optNames) + (optNames.Count() == 1 ? " is forbidden." : " are forbidden.");
     }

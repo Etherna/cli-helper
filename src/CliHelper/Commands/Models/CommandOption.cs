@@ -20,9 +20,9 @@ namespace Etherna.CliHelper.Commands.Models
 {
     public class CommandOption
     {
-        // Regex to validate option names.
-        private static readonly Regex shortNameRegex = new("^-[A-Za-z0-9]$");
+        // Fields.
         private static readonly Regex longNameRegex = new("^--[A-Za-z0-9-]+$");
+        private static readonly Regex shortNameRegex = new("^-[A-Za-z0-9]$");
 
         // Constructor.
         public CommandOption(
@@ -32,7 +32,7 @@ namespace Etherna.CliHelper.Commands.Models
             Action<string[]> onFound,
             IEnumerable<Type>? requiredArgTypes = null)
         {
-            if (shortName != null && !shortNameRegex.IsMatch(shortName))
+            if (shortName is not null && !shortNameRegex.IsMatch(shortName))
                 throw new ArgumentException("Invalid short option name");
 
             if (!longNameRegex.IsMatch(longName))
@@ -47,8 +47,8 @@ namespace Etherna.CliHelper.Commands.Models
 
         // Properties.
         public string Description { get; }
-        public Action<string[]> OnFound { get; }
         public string LongName { get; }
+        public Action<string[]> OnFound { get; }
         public IEnumerable<Type> RequiredArgTypes { get; }
         public string? ShortName { get; }
     }

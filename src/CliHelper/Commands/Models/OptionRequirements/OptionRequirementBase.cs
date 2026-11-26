@@ -40,7 +40,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
             foundParsedOption = parsedOptions.SingleOrDefault(parsOpt =>
                 parsOpt.Option.ShortName == optionName ||
                 parsOpt.Option.LongName == optionName);
-            return foundParsedOption != null;
+            return foundParsedOption is not null;
         }
     }
 }

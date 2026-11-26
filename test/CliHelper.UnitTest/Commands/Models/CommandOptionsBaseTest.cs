@@ -24,6 +24,21 @@ namespace Etherna.CliHelper.Commands.Models
     public class CommandOptionsBaseTest
     {
         // Internal classes.
+        private sealed class RequiringOptions : CommandOptionsBase
+        {
+            public override IEnumerable<CommandOption> Definitions =>
+            [
+                new("-a", "--alpha", "Alpha flag", _ => { }),
+                new("-c", "--count", "Count", _ => { }, [typeof(int)])
+            ];
+
+            public override IEnumerable<OptionRequirementBase> Requirements =>
+            [
+                new RequireOneOfOptionRequirement("-a"),
+                new MinValueOptionRequirement("--count", 1)
+            ];
+        }
+
         private sealed class TestOptions : CommandOptionsBase
         {
             public bool Alpha { get; private set; }
@@ -42,25 +57,27 @@ namespace Etherna.CliHelper.Commands.Models
             ];
         }
 
-        private sealed class RequiringOptions : CommandOptionsBase
-        {
-            public override IEnumerable<CommandOption> Definitions =>
-            [
-                new("-a", "--alpha", "Alpha flag", _ => { }),
-                new("-c", "--count", "Count", _ => { }, [typeof(int)])
-            ];
-
-            public override IEnumerable<OptionRequirementBase> Requirements =>
-            [
-                new RequireOneOfOptionRequirement("-a"),
-                new MinValueOptionRequirement("--count", 1)
-            ];
-        }
-
         // Fields.
         private readonly IIoService ioService = Mock.Of<IIoService>();
 
         // Tests.
+        [Fact]
+        public void ParseArgsKeepsParsingSingleOptions()
+        {
+            // Setup.
+            var options = new TestOptions();
+
+            // Action.
+            var parsedArgs = options.ParseArgs(["--alpha", "-n", "value", "--beta", "commandArg"], ioService);
+
+            // Assert.
+            Assert.Equal(4, parsedArgs);
+            Assert.True(options.Alpha);
+            Assert.True(options.Beta);
+            Assert.False(options.Gamma);
+            Assert.Equal("value", options.Name);
+        }
+
         [Theory]
         [InlineData(new[] { "-ab" }, 1, true, true, false, null)]
         [InlineData(new[] { "-ba", "commandArg" }, 1, true, true, false, null)]
@@ -74,68 +91,18 @@ namespace Etherna.CliHelper.Commands.Models
         public void ParseArgsParsesComposedShortOptions(
             string[] args, int expectedParsedArgs, bool expectedAlpha, bool expectedBeta, bool expectedGamma, string? expectedName)
         {
+            // Setup.
             var options = new TestOptions();
 
+            // Action.
             var parsedArgs = options.ParseArgs(args, ioService);
 
+            // Assert.
             Assert.Equal(expectedParsedArgs, parsedArgs);
             Assert.Equal(expectedAlpha, options.Alpha);
             Assert.Equal(expectedBeta, options.Beta);
             Assert.Equal(expectedGamma, options.Gamma);
             Assert.Equal(expectedName, options.Name);
-        }
-
-        [Fact]
-        public void ParseArgsKeepsParsingSingleOptions()
-        {
-            var options = new TestOptions();
-
-            var parsedArgs = options.ParseArgs(["--alpha", "-n", "value", "--beta", "commandArg"], ioService);
-
-            Assert.Equal(4, parsedArgs);
-            Assert.True(options.Alpha);
-            Assert.True(options.Beta);
-            Assert.False(options.Gamma);
-            Assert.Equal("value", options.Name);
-        }
-
-        [Fact]
-        public void ParseArgsTakesFollowingArgsStartingWithDashAsOptionArgs()
-        {
-            var options = new TestOptions();
-
-            var parsedArgs = options.ParseArgs(["-n", "-b", "commandArg"], ioService);
-
-            Assert.Equal(2, parsedArgs);
-            Assert.Equal("-b", options.Name);
-            Assert.False(options.Beta);
-        }
-
-        [Fact]
-        public void ParseArgsReportsEveryViolatedRequirement()
-        {
-            var ioServiceMock = new Mock<IIoService>();
-            var options = new RequiringOptions();
-
-            var exception = Assert.Throws<ArgumentException>(() => options.ParseArgs(["-c", "0"], ioServiceMock.Object));
-
-            Assert.Equal("Errors with command options", exception.Message);
-            ioServiceMock.Verify(io => io.WriteError(
-                "Invalid options:" + Environment.NewLine +
-                "  --alpha is required." + Environment.NewLine +
-                "  -c has min value 1." + Environment.NewLine), Times.Once);
-        }
-
-        [Fact]
-        public void ParseArgsTakesAttachedArgAsFirstOfRequiredArgs()
-        {
-            var options = new TestOptions();
-
-            var parsedArgs = options.ParseArgs(["-ar1", "2", "commandArg"], ioService);
-
-            Assert.Equal(2, parsedArgs);
-            Assert.True(options.Alpha);
-            Assert.Equal(new[] { "1", "2" }, options.Range);
         }
 
         [Theory]
@@ -146,11 +113,58 @@ namespace Etherna.CliHelper.Commands.Models
         [InlineData(new[] { "--alpha", "-ba" }, "-a option is duplicate")]
         public void ParseArgsRejectsInvalidComposedShortOptions(string[] args, string expectedMessage)
         {
+            // Setup.
             var options = new TestOptions();
 
+            // Action and assert.
             var exception = Assert.Throws<ArgumentException>(() => options.ParseArgs(args, ioService));
-
             Assert.Equal(expectedMessage, exception.Message);
+        }
+
+        [Fact]
+        public void ParseArgsReportsEveryViolatedRequirement()
+        {
+            // Setup.
+            var ioServiceMock = new Mock<IIoService>();
+            var options = new RequiringOptions();
+
+            // Action and assert.
+            var exception = Assert.Throws<ArgumentException>(() => options.ParseArgs(["-c", "0"], ioServiceMock.Object));
+            Assert.Equal("Errors with command options", exception.Message);
+            ioServiceMock.Verify(io => io.WriteError(
+                "Invalid options:" + Environment.NewLine +
+                "  --alpha is required." + Environment.NewLine +
+                "  -c has min value 1." + Environment.NewLine), Times.Once);
+        }
+
+        [Fact]
+        public void ParseArgsTakesAttachedArgAsFirstOfRequiredArgs()
+        {
+            // Setup.
+            var options = new TestOptions();
+
+            // Action.
+            var parsedArgs = options.ParseArgs(["-ar1", "2", "commandArg"], ioService);
+
+            // Assert.
+            Assert.Equal(2, parsedArgs);
+            Assert.True(options.Alpha);
+            Assert.Equal(new[] { "1", "2" }, options.Range);
+        }
+
+        [Fact]
+        public void ParseArgsTakesFollowingArgsStartingWithDashAsOptionArgs()
+        {
+            // Setup.
+            var options = new TestOptions();
+
+            // Action.
+            var parsedArgs = options.ParseArgs(["-n", "-b", "commandArg"], ioService);
+
+            // Assert.
+            Assert.Equal(2, parsedArgs);
+            Assert.Equal("-b", options.Name);
+            Assert.False(options.Beta);
         }
     }
 }

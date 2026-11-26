@@ -39,7 +39,7 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
         // Methods.
         public override string PrintHelpLine(CommandOptionsBase commandOptions)
         {
-            ArgumentNullException.ThrowIfNull(commandOptions, nameof(commandOptions));
+            ArgumentNullException.ThrowIfNull(commandOptions);
             
             return ComposeSentence(commandOptions.FindOptionByName(OptionsNames.First()).LongName);
         }
@@ -58,11 +58,11 @@ namespace Etherna.CliHelper.Commands.Models.OptionRequirements
                     $"Invalid argument value: {parsedOption.ParsedName} {parsedOption.ParsedArgs.First()}")];
 
             return doubleArg >= MinValue && doubleArg <= MaxValue
-                ? Array.Empty<OptionRequirementError>()
+                ? []
                 : [new OptionRequirementError(ComposeSentence(parsedOption.ParsedName))];
         }
 
-        // Private helpers.
+        // Helpers.
         private string ComposeSentence(string optName) => $"{optName} has value in range [{MinValue}, {MaxValue}].";
     }
 }

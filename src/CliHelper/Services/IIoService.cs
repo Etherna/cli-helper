@@ -18,6 +18,7 @@ namespace Etherna.CliHelper.Services
 {
     public interface IIoService
     {
+        // Methods.
         ConsoleKeyInfo ReadKey();
         string? ReadLine();
         void Write(string? value);

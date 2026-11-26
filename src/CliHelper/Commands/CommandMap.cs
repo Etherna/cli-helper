@@ -24,14 +24,14 @@ namespace Etherna.CliHelper.Commands
         CommandMap? parentCommandMap)
         : ICommandManagerConfiguration
     {
-        // Fields
-        private readonly List<CommandMap> subCommandMaps = [];
+        // Fields.
+        private readonly List<CommandMap> _subCommandMaps = [];
 
         // Properties.
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
         public Type CommandType { get; } = commandType;
         public CommandMap? ParentCommandMap { get; } = parentCommandMap;
-        public IEnumerable<CommandMap> SubCommandMaps => subCommandMaps;
+        public IEnumerable<CommandMap> SubCommandMaps => _subCommandMaps;
 
         // Methods.
         public ICommandManagerConfiguration AddCommand<
@@ -41,7 +41,7 @@ namespace Etherna.CliHelper.Commands
         {
             var subCommandMap = new CommandMap(typeof(TCommand), this);
             configSubCommands?.Invoke(subCommandMap);
-            subCommandMaps.Add(subCommandMap);
+            _subCommandMaps.Add(subCommandMap);
 
             return this;
         }

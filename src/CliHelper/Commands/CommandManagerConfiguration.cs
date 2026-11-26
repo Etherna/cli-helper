@@ -24,7 +24,7 @@ namespace Etherna.CliHelper.Commands
         : ICommandManagerConfiguration
     {
         // Fields.
-        private readonly Dictionary<Type, CommandMap> _allCommandMaps = new();
+        private readonly Dictionary<Type, CommandMap> _allCommandMaps = [];
         
         // Properties.
         public IReadOnlyDictionary<Type, CommandMap> AllCommandMaps => _allCommandMaps;
