@@ -34,7 +34,9 @@ namespace Etherna.CliHelper.Commands.Models
             Definitions.First(o => o.ShortName == name || o.LongName == name);
         
         /// <summary>
-        /// Parse command options
+        /// Parse command options. Short options compose POSIX style: "-ab" is "-a -b", and an option
+        /// requiring args ends the group, taking the rest of it as its first arg ("-nvalue", "-anvalue"),
+        /// or the following args when nothing is left ("-an value")
         /// </summary>
         /// <param name="args">Input args</param>
         /// <returns>Found option args counter</returns>
@@ -42,36 +44,40 @@ namespace Etherna.CliHelper.Commands.Models
             string[] args,
             IIoService ioService)
         {
-            ArgumentNullException.ThrowIfNull(args, nameof(args));
-            ArgumentNullException.ThrowIfNull(ioService, nameof(args));
+            ArgumentNullException.ThrowIfNull(args);
+            ArgumentNullException.ThrowIfNull(ioService);
 
             // Parse options.
             var parsedArgsCount = 0;
             var foundOptions = new List<ParsedOption>();
             while (parsedArgsCount < args.Length && args[parsedArgsCount].StartsWith('-'))
             {
-                var optName = args[parsedArgsCount++];
+                var optArg = args[parsedArgsCount++];
                 
-                // Find option by name.
-                var foundOption = Definitions.FirstOrDefault(opt => opt.ShortName == optName || opt.LongName == optName);
-                if (foundOption is null)
-                    throw new ArgumentException(optName + " is not a valid option");
+                // Long option, or single short option.
+                if (optArg.Length <= 2 || optArg[1] == '-')
+                {
+                    var option = FindUnparsedOption(optArg, foundOptions);
+                    parsedArgsCount += ExecOption(option, optArg, null, args, parsedArgsCount, foundOptions);
+                    continue;
+                }
                 
-                // Verify duplicate options.
-                if (foundOptions.Any(opt => opt.Option.ShortName == optName || opt.Option.LongName == optName))
-                    throw new ArgumentException(optName + " option is duplicate");
-
-                // Check required option args.
-                if (args.Length - parsedArgsCount < foundOption.RequiredArgTypes.Count())
-                    throw new ArgumentException($"{optName} requires {foundOption.RequiredArgTypes.Count()} args: {string.Join(" ", foundOption.RequiredArgTypes.Select(t => t.Name.ToLower(CultureInfo.InvariantCulture)))}");
-                
-                // Exec option code.
-                var requiredOptArgs = args[parsedArgsCount..(parsedArgsCount + foundOption.RequiredArgTypes.Count())];
-                parsedArgsCount += requiredOptArgs.Length;
-                foundOption.OnFound(requiredOptArgs);
-                
-                // Save on found options.
-                foundOptions.Add(new(foundOption, optName, requiredOptArgs));
+                // Composed short options.
+                for (var i = 1; i < optArg.Length; i++)
+                {
+                    var optName = "-" + optArg[i];
+                    var option = FindUnparsedOption(optName, foundOptions);
+                    if (!option.RequiredArgTypes.Any())
+                    {
+                        ExecOption(option, optName, null, args, parsedArgsCount, foundOptions);
+                        continue;
+                    }
+                    
+                    // An option requiring args ends the group.
+                    var attachedArg = i + 1 < optArg.Length ? optArg[(i + 1)..] : null;
+                    parsedArgsCount += ExecOption(option, optName, attachedArg, args, parsedArgsCount, foundOptions);
+                    break;
+                }
             }
             
             // Verify option requirements.
@@ -89,6 +95,49 @@ namespace Etherna.CliHelper.Commands.Models
             }
 
             return parsedArgsCount;
+        }
+        
+        // Helpers.
+        /// <summary>
+        /// Run an option with its args, and save it as parsed
+        /// </summary>
+        /// <returns>Count of the following args consumed by the option</returns>
+        private static int ExecOption(
+            CommandOption option,
+            string optName,
+            string? attachedArg,
+            string[] args,
+            int followingArgsIndex,
+            List<ParsedOption> parsedOptions)
+        {
+            // Check required option args. An attached arg is the first one.
+            var requiredArgsCount = option.RequiredArgTypes.Count();
+            var followingArgsCount = attachedArg is null ? requiredArgsCount : requiredArgsCount - 1;
+            if (args.Length - followingArgsIndex < followingArgsCount)
+                throw new ArgumentException($"{optName} requires {requiredArgsCount} args: {string.Join(" ", option.RequiredArgTypes.Select(t => t.Name.ToLower(CultureInfo.InvariantCulture)))}");
+            
+            // Exec option code.
+            var followingArgs = args[followingArgsIndex..(followingArgsIndex + followingArgsCount)];
+            string[] optArgs = attachedArg is null ? followingArgs : [attachedArg, .. followingArgs];
+            option.OnFound(optArgs);
+            
+            // Save on found options.
+            parsedOptions.Add(new(option, optName, optArgs));
+            
+            return followingArgsCount;
+        }
+        
+        private CommandOption FindUnparsedOption(string optName, List<ParsedOption> parsedOptions)
+        {
+            // Find option by name.
+            var option = Definitions.FirstOrDefault(opt => opt.ShortName == optName || opt.LongName == optName) ??
+                throw new ArgumentException(optName + " is not a valid option");
+            
+            // Verify duplicate options.
+            if (parsedOptions.Any(opt => opt.Option.ShortName == optName || opt.Option.LongName == optName))
+                throw new ArgumentException(optName + " option is duplicate");
+
+            return option;
         }
     }
 }
