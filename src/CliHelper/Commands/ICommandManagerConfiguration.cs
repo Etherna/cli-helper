@@ -31,6 +31,8 @@ namespace Etherna.CliHelper.Commands
         /// <typeparam name="TCommand">The command type</typeparam>
         /// <param name="configSubCommands">Adds the sub commands of the command, on its own configuration</param>
         /// <returns>This configuration, to add more commands at the same level</returns>
+        /// <exception cref="InvalidOperationException">An alias of the command is not valid, or its name or an alias
+        /// is already used by another sub command of the same command</exception>
         ICommandManagerConfiguration AddCommand<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TCommand>(
             Action<ICommandManagerConfiguration>? configSubCommands = null)

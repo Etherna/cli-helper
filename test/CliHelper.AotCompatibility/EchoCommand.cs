@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 
 namespace Etherna.CliHelper.AotCompatibility
 {
+    [CommandAlias("say")]
     internal sealed class EchoCommand(EchoFormatter formatter) : CommandBase
     {
         // Properties.

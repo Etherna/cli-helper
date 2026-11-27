@@ -23,7 +23,8 @@ namespace Etherna.CliHelper.AotCompatibility
     // (see the .csproj and CI): publishing this app fails on any trim/AOT warning.
     // This entry point additionally proves, at runtime, that the AOT-sensitive paths work once compiled
     // ahead-of-time: the container building the io service and every command by reflection over their
-    // constructors (dependencies included), and command names derived from the command type names.
+    // constructors (dependencies included), command names derived from the command type names, and command
+    // aliases read from the attributes of the command types.
     internal static class Program
     {
         // Methods.
@@ -35,6 +36,7 @@ namespace Etherna.CliHelper.AotCompatibility
                 await CheckAsync("options-help", VerifyOptionsHelpAsync).ConfigureAwait(false) +
                 await CheckAsync("option-requirements", VerifyOptionRequirementsAsync).ConfigureAwait(false) +
                 await CheckAsync("sub-commands", VerifySubCommandWithDependencyAsync).ConfigureAwait(false) +
+                await CheckAsync("aliases", VerifyAliasAsync).ConfigureAwait(false) +
                 await CheckAsync("invalid-command", VerifyInvalidCommandAsync).ConfigureAwait(false);
 
             Console.WriteLine(failures == 0 ? "AOT smoke test PASSED" : $"AOT smoke test FAILED ({failures})");
@@ -42,6 +44,18 @@ namespace Etherna.CliHelper.AotCompatibility
         }
 
         // Checks.
+        private static async Task<string> VerifyAliasAsync()
+        {
+            var (io, exception) = await RunAsync("tools", "say", "a", "b").ConfigureAwait(false);
+            ThrowIfFailed(exception);
+
+            var expected = $"root tools echo: a b{Environment.NewLine}";
+            if (io.Output != expected)
+                throw new InvalidOperationException($"Unexpected output \"{io.Output}\".");
+
+            return "dispatched a command by its alias";
+        }
+
         private static async Task<string> VerifyInvalidCommandAsync()
         {
             var (_, exception) = await RunAsync("unknown").ConfigureAwait(false);
@@ -141,7 +155,7 @@ namespace Etherna.CliHelper.AotCompatibility
         //   root
         //   ├── greet   (options, with requirements)
         //   └── tools
-        //       └── echo   (constructor dependency resolved by the container)
+        //       └── echo   (alias say, constructor dependency resolved by the container)
         // None of these types is ever instantiated directly: the library creates them by reflection
         // over their constructors, the path that breaks first when trimming removes metadata.
         private static async Task<(CapturingIoService Io, ArgumentException? Exception)> RunAsync(params string[] args)

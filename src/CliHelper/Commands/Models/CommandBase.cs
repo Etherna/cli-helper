@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -36,6 +37,11 @@ namespace Etherna.CliHelper.Commands.Models
         private CommandBase? resolvedSubCommand;
 
         // Properties.
+        /// <summary>
+        /// The aliases of the command, declared with <see cref="CommandAliasAttribute"/>: other names selecting it
+        /// in the args, beside <see cref="Name"/>.
+        /// </summary>
+        public IEnumerable<string> Aliases => GetCommandAliasesFromType(GetType());
         /// <summary>
         /// The args of the command in its usage help, after the options. "COMMAND" when it has sub commands,
         /// empty otherwise.
@@ -158,7 +164,8 @@ namespace Etherna.CliHelper.Commands.Models
                 }
                 
                 // Sub command, or begin of command args.
-                var subCommandType = leafCommand.SubCommandTypes.FirstOrDefault(t => GetCommandNameFromType(t) == arg);
+                var subCommandType = leafCommand.SubCommandTypes.FirstOrDefault(t =>
+                    GetCommandNameFromType(t) == arg || GetCommandAliasesFromType(t).Contains(arg));
                 if (subCommandType is null)
                     break;
 
@@ -231,7 +238,7 @@ namespace Etherna.CliHelper.Commands.Models
         /// <param name="commandType">The command type</param>
         /// <returns>The command name</returns>
         /// <exception cref="ArgumentException">The type is not a command type</exception>
-        protected static string GetCommandNameFromType(Type commandType)
+        protected internal static string GetCommandNameFromType(Type commandType)
         {
             ArgumentNullException.ThrowIfNull(commandType);
             
@@ -282,6 +289,9 @@ namespace Etherna.CliHelper.Commands.Models
             strBuilder.AppendLine();
         }
 
+        internal static string[] GetCommandAliasesFromType(Type commandType) =>
+            [.. commandType.GetCustomAttributes<CommandAliasAttribute>(false).Select(a => a.Alias)];
+
         [SuppressMessage("Performance", "CA1851:Possible multiple enumerations of \'IEnumerable\' collection")]
         private void PrintHelp()
         {
@@ -295,6 +305,14 @@ namespace Etherna.CliHelper.Commands.Models
             // Add usage.
             strBuilder.AppendLine($"Usage:  {CommandPathUsageHelpString}");
             strBuilder.AppendLine();
+
+            // Add aliases.
+            var aliases = GetCommandAliasesFromType(GetType());
+            if (aliases.Length != 0)
+            {
+                strBuilder.AppendLine($"Aliases:  {string.Join(", ", aliases)}");
+                strBuilder.AppendLine();
+            }
         
             // Add sub commands.
             if (SubCommandTypes.Any())

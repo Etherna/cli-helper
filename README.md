@@ -38,6 +38,8 @@ tools, like the [Etherna Gateway CLI](https://github.com/Etherna/etherna-gateway
   `AddCliHelper`, and the container builds every command with its constructor dependencies.
 - **Nested sub commands** — commands group sub commands at any depth (`tool clock now`): a command with
   sub commands dispatches to the one the args select.
+- **Command aliases** — `[CommandAlias("time")]` gives a command other names selecting it in the args,
+  beside the one of its type (`tool time now`). Help and errors keep naming it by its name.
 - **POSIX style options** — short and long names (`-n`, `--name`), composed short options (`-sn Ada` is
   `-s -n Ada`), and the options of every command of the path accepted anywhere after the command defining
   them, before the command args.
@@ -74,7 +76,7 @@ The examples build `tool`, a small application with this command tree:
 
 ```
 tool              -p/--profile string
-├── clock
+├── clock         alias time
 │   └── now
 └── greet         -n/--name string (required), -s/--shout, --times int32 (1 to 10)
 ```
@@ -85,7 +87,8 @@ A command overrides `Description`, shown in the help. A command with sub command
 the default `ExecuteAsync` dispatches to the sub command the args select. A leaf command overrides
 `ExecuteAsync`, and writes through `IoService`. By default a command followed by nothing in the args
 prints its help: a command that runs with no args sets `PrintHelpWithNoArgs` to false. `IsRootCommand`
-adds to the help of the root how to get the help of a sub command.
+adds to the help of the root how to get the help of a sub command. `CommandAlias`, repeatable, gives a
+command other names in the args: `AddCommand` rejects an alias already used by a sibling command.
 
 ```csharp
 using Etherna.CliHelper.Commands.Models;
@@ -109,7 +112,8 @@ public sealed class ToolCommandOptions : CommandOptionsBase
     public string Profile { get; private set; } = "default";
 }
 
-// tool clock: a group of commands.
+// tool clock: a group of commands, also selected as tool time.
+[CommandAlias("time")]
 public sealed class ClockCommand : CommandBase
 {
     public override string Description => "Tell the time";
@@ -274,7 +278,7 @@ Run 'tool COMMAND -h' or 'tool COMMAND --help' for more information on a command
 
 $ tool greet -sn Ada
 HELLO ADA!
-$ tool clock now -p work
+$ tool time now -p work
 2026-11-26 17:16:42Z
 $ tool greet --times 0
 Invalid options:

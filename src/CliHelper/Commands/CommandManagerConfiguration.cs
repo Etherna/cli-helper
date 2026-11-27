@@ -43,12 +43,14 @@ namespace Etherna.CliHelper.Commands
         /// <typeparam name="TCommand">The command type</typeparam>
         /// <param name="configSubCommands">Adds the sub commands of the command, on its own configuration</param>
         /// <returns>This configuration, to add more root commands</returns>
+        /// <exception cref="InvalidOperationException">An alias of the command is not valid</exception>
         public ICommandManagerConfiguration AddCommand<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TCommand>(
             Action<ICommandManagerConfiguration>? configSubCommands = null)
             where TCommand : CommandBase
         {
             var commandMap = new CommandMap(typeof(TCommand), null);
+            commandMap.VerifyNames([]);
             configSubCommands?.Invoke(commandMap);
             
             RegisterRecursivelyCommandMaps(commandMap);

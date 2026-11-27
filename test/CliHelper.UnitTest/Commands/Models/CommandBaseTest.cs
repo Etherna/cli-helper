@@ -29,9 +29,9 @@ namespace Etherna.CliHelper.Commands.Models
         // Internal classes.
         // The command tree:
         //   root      -k/--api-key string, -i/--ignore-update, --retries int (min 1)
-        //   ├── resource
+        //   ├── resource    aliases res, r
         //   │   ├── fund    -p/--pin, -t/--traffic (one required), RESOURCE_ID
-        //   │   └── list    -a/--all, -h/--hidden
+        //   │   └── list    alias ls, -a/--all, -h/--hidden
         //   ├── echo        runs with no args
         //   ├── index       -i/--index-filename string, conflicting with the root short name
         //   └── tag         -x/--api-key, conflicting with the root long name
@@ -124,6 +124,7 @@ namespace Etherna.CliHelper.Commands.Models
             ];
         }
 
+        [CommandAlias("ls")]
         private sealed class ListCommand(ExecutionRecorder recorder) : CommandBase<ListCommandOptions>
         {
             public override string Description => "List resources";
@@ -149,6 +150,8 @@ namespace Etherna.CliHelper.Commands.Models
             ];
         }
 
+        [CommandAlias("res")]
+        [CommandAlias("r")]
         private sealed class ResourceCommand : CommandBase
         {
             public override string Description => "Manage resources";
@@ -238,6 +241,8 @@ namespace Etherna.CliHelper.Commands.Models
             "",
             "Usage:  root resource [OPTIONS] COMMAND",
             "",
+            "Aliases:  res, r",
+            "",
             "Commands:",
             "  fund    Fund a resource",
             "  list    List resources",
@@ -285,6 +290,7 @@ namespace Etherna.CliHelper.Commands.Models
             { ["--help"], RootHelp },
             { ["-k", "KEY", "-h"], RootHelp },                    //after options
             { ["resource"], ResourceHelp },                       //nothing follows an intermediate command
+            { ["res"], ResourceHelp },                            //reached by an alias, named by its name
             { ["-i", "resource"], ResourceHelp },
             { ["resource", "-h"], ResourceHelp },
             { ["resource", "fund"], FundHelp },                   //nothing follows the leaf
@@ -474,6 +480,7 @@ namespace Etherna.CliHelper.Commands.Models
         [InlineData(new[] { "-k", "KEY" }, "A command name is required")]
         [InlineData(new[] { "unknown" }, "root: 'unknown' is not a valid command.")]
         [InlineData(new[] { "resource", "unknown" }, "root resource: 'unknown' is not a valid command.")]
+        [InlineData(new[] { "r", "unknown" }, "root resource: 'unknown' is not a valid command.")]
         public async Task RunAsyncRejectsInvalidSubCommandsOnDispatch(string[] args, string expectedMessage)
         {
             // Action.
@@ -482,6 +489,21 @@ namespace Etherna.CliHelper.Commands.Models
             // Assert.
             Assert.IsType<ArgumentException>(result.Exception);
             Assert.Equal(expectedMessage, result.Exception.Message);
+        }
+
+        [Theory]
+        [InlineData("res", "ls")]
+        [InlineData("r", "list")]
+        [InlineData("resource", "ls")]
+        public async Task RunAsyncResolvesSubCommandsByAlias(string resourceArg, string listArg)
+        {
+            // Action.
+            var result = await RunAsync(resourceArg, listArg, "-a");
+
+            // Assert.
+            Assert.Null(result.Exception);
+            Assert.True(result.Recorder.ListExecuted);
+            Assert.True(result.Recorder.ListAll);
         }
 
         [Fact]
